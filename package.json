@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
-    "build": "vite build",
+    "build": "tsc -b && vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit"
@@ -47,7 +47,4 @@
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
   }
-}
-"scripts": {
-  "build": "tsc -b && vite build"
 }
