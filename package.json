@@ -48,3 +48,6 @@
     "vite": "^6.2.0"
   }
 }
+"scripts": {
+  "build": "tsc -b && vite build"
+}
