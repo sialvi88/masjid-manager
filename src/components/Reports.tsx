@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useStore } from '../store';
 import { format, isWithinInterval, parseISO } from 'date-fns';
 import { FileText, Download, Printer, Settings2, Edit3, Image as ImageIcon } from 'lucide-react';
@@ -6,15 +6,36 @@ import * as Dialog from '@radix-ui/react-dialog';
 import jsPDF from 'jspdf';
 import * as htmlToImage from 'html-to-image';
 import * as XLSX from 'xlsx';
+import { useReactToPrint } from 'react-to-print';
+import { translations } from '../translations';
 
 export default function Reports() {
+  const componentRef = useRef<HTMLDivElement>(null);
+  const language = useStore(state => state.language);
+  const t = translations[language];
+  const isRtl = language === 'ur';
+
+  const [reportTitle, setReportTitle] = useState(t.donationReport);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+
+  const handlePrint = useReactToPrint({
+    contentRef: componentRef,
+    documentTitle: reportTitle || t.donationReport,
+  });
   const role = useStore(state => state.role);
   const currentUser = useStore(state => state.currentUser);
-  const isAdmin = currentUser?.role === 'Admin' || !!currentUser?.permissions.includes('view_reports');
+  const isAdmin = currentUser?.role === 'Admin';
   const donations = useStore(state => state.donations);
   const expenses = useStore(state => state.expenses);
+  const loadAllDonations = useStore(state => state.loadAllDonations);
+  const loadAllExpenses = useStore(state => state.loadAllExpenses);
   const settings = useStore(state => state.settings);
   const { currency, dateFormat } = settings;
+
+  useEffect(() => {
+    loadAllDonations();
+    loadAllExpenses();
+  }, [loadAllDonations, loadAllExpenses]);
 
   const formatDate = (dateStr: string) => {
     try {
@@ -25,8 +46,12 @@ export default function Reports() {
     }
   };
 
-  const [reportTitle, setReportTitle] = useState('ڈونیشن رپورٹ');
-  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  // Update title when language changes if it hasn't been manually edited
+  useEffect(() => {
+    if (!isEditingTitle) {
+      setReportTitle(t.donationReport);
+    }
+  }, [language, t.donationReport, isEditingTitle]);
   
   // Filters
   const [startDate, setStartDate] = useState('');
@@ -107,7 +132,7 @@ export default function Reports() {
     ...filteredDonations.map(d => ({
       id: d.id,
       date: d.date,
-      type: 'آمدنی',
+      type: t.income,
       donorName: d.donorName,
       amount: d.amount,
       percentage: d.percentage,
@@ -118,7 +143,7 @@ export default function Reports() {
     ...filteredExpenses.map(e => ({
       id: e.id,
       date: e.date,
-      type: 'خرچہ',
+      type: t.expense,
       donorName: e.description,
       amount: e.amount,
       percentage: '-',
@@ -129,7 +154,7 @@ export default function Reports() {
     ...manualEntries.map(m => ({
       id: m.id,
       date: m.date,
-      type: 'دستی انٹری',
+      type: t.manualEntry,
       donorName: m.donorName,
       amount: m.amount,
       percentage: m.percentage,
@@ -139,8 +164,8 @@ export default function Reports() {
     }))
   ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-  const totalIncome = finalData.filter(d => d.type === 'آمدنی' || d.type === 'دستی انٹری').reduce((sum, d) => sum + Number(d.netAmount), 0);
-  const totalExpense = finalData.filter(d => d.type === 'خرچہ').reduce((sum, d) => sum + Math.abs(Number(d.netAmount)), 0);
+  const totalIncome = finalData.filter(d => d.type === t.income || d.type === t.manualEntry).reduce((sum, d) => sum + Number(d.netAmount), 0);
+  const totalExpense = finalData.filter(d => d.type === t.expense).reduce((sum, d) => sum + Math.abs(Number(d.netAmount)), 0);
   const netBalance = totalIncome - totalExpense;
 
   const exportToPDF = async () => {
@@ -227,13 +252,13 @@ export default function Reports() {
   const exportToExcel = () => {
     const exportData = finalData.map(d => {
       const row: any = {};
-      if (columns.date) row['تاریخ'] = formatDate(d.date);
-      if (columns.type) row['قسم'] = d.type;
-      if (columns.donorName) row['تفصیل / نام'] = d.donorName;
-      if (columns.amount) row['رقم'] = d.amount;
-      if (columns.percentage) row['فیصد'] = d.percentage;
-      if (columns.collectorShare) row['کلیکٹر حصہ'] = d.collectorShare;
-      if (columns.netAmount) row['نیٹ رقم'] = d.netAmount;
+      if (columns.date) row[t.date] = formatDate(d.date);
+      if (columns.type) row[t.type] = d.type;
+      if (columns.donorName) row[t.donorName] = d.donorName;
+      if (columns.amount) row[t.amount] = d.amount;
+      if (columns.percentage) row[t.percentage] = d.percentage;
+      if (columns.collectorShare) row[t.collectorShare] = d.collectorShare;
+      if (columns.netAmount) row[t.netAmount] = d.netAmount;
       return row;
     });
 
@@ -275,13 +300,13 @@ export default function Reports() {
 
           <div className="flex flex-wrap gap-2">
             {isAdmin && (
-              <button
-                onClick={() => setIsSettingsOpen(true)}
-                className="flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                <Settings2 className="w-4 h-4 ml-2" />
-                رپورٹ سیٹنگز
-              </button>
+                <button
+                  onClick={() => setIsSettingsOpen(true)}
+                  className="flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  <Settings2 className={`w-4 h-4 ${isRtl ? 'ml-2' : 'mr-2'}`} />
+                  {t.reportSettings}
+                </button>
             )}
             <button
               onClick={exportToPDF}
@@ -305,7 +330,7 @@ export default function Reports() {
               Excel
             </button>
             <button
-              onClick={() => window.print()}
+              onClick={() => handlePrint()}
               className="flex items-center px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
             >
               <Printer className="w-4 h-4 ml-2" />
@@ -317,7 +342,7 @@ export default function Reports() {
         {/* Filters */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 pt-4 border-t border-gray-100">
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">تاریخ سے</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1">{t.fromDate}</label>
             <input
               type="date"
               value={startDate}
@@ -326,7 +351,7 @@ export default function Reports() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">تاریخ تک</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1">{t.toDate}</label>
             <input
               type="date"
               value={endDate}
@@ -335,7 +360,7 @@ export default function Reports() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">کم از کم رقم</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1">{t.minAmount}</label>
             <input
               type="number"
               value={minAmount}
@@ -345,7 +370,7 @@ export default function Reports() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">زیادہ سے زیادہ رقم</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1">{t.maxAmount}</label>
             <input
               type="number"
               value={maxAmount}
@@ -355,12 +380,12 @@ export default function Reports() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">تفصیل / نام</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1">{t.donorName}</label>
             <input
               type="text"
               value={donorFilter}
               onChange={(e) => setDonorFilter(e.target.value)}
-              placeholder="تلاش..."
+              placeholder={t.search + "..."}
               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
             />
           </div>
@@ -369,6 +394,7 @@ export default function Reports() {
 
       {/* Printable Report Area */}
       <div 
+        ref={componentRef}
         id="printable-report" 
         className="bg-white rounded-xl shadow-sm overflow-hidden print:shadow-none print:m-0 mx-auto max-w-5xl" 
         dir="rtl"
@@ -381,30 +407,29 @@ export default function Reports() {
                 <img src={settings.logoUrl} alt="Logo" className="w-24 h-24 object-contain rounded-lg" />
               )}
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">{settings.masjidName || 'مسجد کا نام'}</h1>
-                <h2 className="text-xl text-gray-600 mt-1">{settings.madrisaName || 'مدرسے کا نام'}</h2>
+                <h1 className="text-3xl font-bold text-gray-900">{settings.masjidName || t.centerNamePlaceholder}</h1>
+                <h2 className="text-xl text-gray-600 mt-1">{settings.madrisaName || t.branchNamePlaceholder}</h2>
               </div>
             </div>
-            <div className="text-left">
-              <h3 className="text-2xl font-bold text-blue-600">{reportTitle}</h3>
-              <p className="text-gray-500 mt-2 text-sm">
-                {startDate && endDate ? `${formatDate(startDate)} سے ${formatDate(endDate)}` : 'تمام ریکارڈز'}
-              </p>
-            </div>
+          <div className="text-left">
+            <h3 className="text-2xl font-bold text-blue-600">{reportTitle}</h3>
+            <p className="text-gray-500 mt-2 text-sm">
+              {startDate && endDate ? `${formatDate(startDate)} ${isRtl ? 'سے' : 'to'} ${formatDate(endDate)}` : t.allRecords}
+            </p>
+          </div>
           </div>
 
-          {/* Summary Cards */}
           <div className="grid grid-cols-3 gap-6 mb-8">
             <div className="bg-green-50 p-5 rounded-xl border border-green-100">
-              <h3 className="text-green-800 text-sm font-medium mb-1">کل آمدنی (نیٹ)</h3>
+              <h3 className="text-green-800 text-sm font-medium mb-1">{t.totalIncomeNet}</h3>
               <p className="text-2xl font-bold text-green-900">{currency} {totalIncome.toLocaleString()}</p>
             </div>
             <div className="bg-red-50 p-5 rounded-xl border border-red-100">
-              <h3 className="text-red-800 text-sm font-medium mb-1">کل خرچہ</h3>
+              <h3 className="text-red-800 text-sm font-medium mb-1">{t.totalExpense}</h3>
               <p className="text-2xl font-bold text-red-900">{currency} {totalExpense.toLocaleString()}</p>
             </div>
             <div className="bg-blue-50 p-5 rounded-xl border border-blue-100">
-              <h3 className="text-blue-800 text-sm font-medium mb-1">بقایا جات</h3>
+              <h3 className="text-blue-800 text-sm font-medium mb-1">{t.balance}</h3>
               <p className="text-2xl font-bold text-blue-900">{currency} {netBalance.toLocaleString()}</p>
             </div>
           </div>
@@ -414,13 +439,13 @@ export default function Reports() {
             <table className="min-w-full divide-y divide-gray-200 text-right">
               <thead className="bg-gray-50">
                 <tr>
-                  {columns.date && <th className="px-4 py-3 text-right text-sm font-bold text-gray-700">تاریخ</th>}
-                  {columns.type && <th className="px-4 py-3 text-right text-sm font-bold text-gray-700">قسم</th>}
-                  {columns.donorName && <th className="px-4 py-3 text-right text-sm font-bold text-gray-700">تفصیل / نام</th>}
-                  {columns.amount && <th className="px-4 py-3 text-right text-sm font-bold text-gray-700">رقم</th>}
-                  {columns.percentage && <th className="px-4 py-3 text-right text-sm font-bold text-gray-700">فیصد</th>}
-                  {columns.collectorShare && <th className="px-4 py-3 text-right text-sm font-bold text-gray-700">کلیکٹر حصہ</th>}
-                  {columns.netAmount && <th className="px-4 py-3 text-right text-sm font-bold text-gray-700">نیٹ رقم</th>}
+                  {columns.date && <th className={`px-4 py-3 ${isRtl ? 'text-right' : 'text-left'} text-sm font-bold text-gray-700`}>{t.date}</th>}
+                  {columns.type && <th className={`px-4 py-3 ${isRtl ? 'text-right' : 'text-left'} text-sm font-bold text-gray-700`}>{t.type}</th>}
+                  {columns.donorName && <th className={`px-4 py-3 ${isRtl ? 'text-right' : 'text-left'} text-sm font-bold text-gray-700`}>{t.donorName}</th>}
+                  {columns.amount && <th className={`px-4 py-3 ${isRtl ? 'text-right' : 'text-left'} text-sm font-bold text-gray-700`}>{t.amount}</th>}
+                  {columns.percentage && <th className={`px-4 py-3 ${isRtl ? 'text-right' : 'text-left'} text-sm font-bold text-gray-700`}>{t.percentage}</th>}
+                  {columns.collectorShare && <th className={`px-4 py-3 ${isRtl ? 'text-right' : 'text-left'} text-sm font-bold text-gray-700`}>{t.collectorShare}</th>}
+                  {columns.netAmount && <th className={`px-4 py-3 ${isRtl ? 'text-right' : 'text-left'} text-sm font-bold text-gray-700`}>{t.netAmount}</th>}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -444,15 +469,15 @@ export default function Reports() {
                         <input type="date" value={newManualEntry.date} onChange={e => setNewManualEntry({...newManualEntry, date: e.target.value})} className="w-full px-2 py-1 border rounded text-sm" />
                       </td>
                     )}
-                    {columns.type && <td className="px-2 py-2 text-sm text-gray-500">دستی انٹری</td>}
+                    {columns.type && <td className="px-2 py-2 text-sm text-gray-500">{t.manualEntry}</td>}
                     {columns.donorName && (
                       <td className="px-2 py-2">
-                        <input type="text" placeholder="Manual Entry..." value={newManualEntry.donorName} onChange={e => setNewManualEntry({...newManualEntry, donorName: e.target.value})} className="w-full px-2 py-1 border rounded text-sm" />
+                        <input type="text" placeholder={t.manualEntry + "..."} value={newManualEntry.donorName} onChange={e => setNewManualEntry({...newManualEntry, donorName: e.target.value})} className="w-full px-2 py-1 border rounded text-sm" />
                       </td>
                     )}
                     {columns.amount && (
                       <td className="px-2 py-2">
-                        <input type="number" placeholder="Amount" value={newManualEntry.amount} onChange={e => setNewManualEntry({...newManualEntry, amount: e.target.value})} className="w-full px-2 py-1 border rounded text-sm" />
+                        <input type="number" placeholder={t.amount} value={newManualEntry.amount} onChange={e => setNewManualEntry({...newManualEntry, amount: e.target.value})} className="w-full px-2 py-1 border rounded text-sm" />
                       </td>
                     )}
                     {columns.percentage && (
@@ -462,13 +487,13 @@ export default function Reports() {
                     )}
                     {columns.collectorShare && (
                       <td className="px-2 py-2">
-                        <input type="number" placeholder="Share" value={newManualEntry.collectorShare} onChange={e => setNewManualEntry({...newManualEntry, collectorShare: e.target.value})} className="w-full px-2 py-1 border rounded text-sm" />
+                        <input type="number" placeholder={t.collectorShare} value={newManualEntry.collectorShare} onChange={e => setNewManualEntry({...newManualEntry, collectorShare: e.target.value})} className="w-full px-2 py-1 border rounded text-sm" />
                       </td>
                     )}
                     {columns.netAmount && (
                       <td className="px-2 py-2 flex gap-2">
-                        <input type="number" placeholder="Net" value={newManualEntry.netAmount} onChange={e => setNewManualEntry({...newManualEntry, netAmount: e.target.value})} className="w-full px-2 py-1 border rounded text-sm" />
-                        <button onClick={handleAddManualEntry} className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">Add</button>
+                        <input type="number" placeholder={t.netAmount} value={newManualEntry.netAmount} onChange={e => setNewManualEntry({...newManualEntry, netAmount: e.target.value})} className="w-full px-2 py-1 border rounded text-sm" />
+                        <button onClick={handleAddManualEntry} className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">{t.add}</button>
                       </td>
                     )}
                   </tr>
@@ -477,10 +502,9 @@ export default function Reports() {
             </table>
           </div>
           
-          {/* Footer for Print/PDF */}
           <div className="mt-12 pt-8 border-t border-gray-200 flex justify-between items-center text-sm text-gray-500">
-            <p>پرنٹ کی تاریخ: {format(new Date(), 'dd-MM-yyyy')}</p>
-            <p>دستخط: _________________</p>
+            <p>{t.printDate}: {format(new Date(), 'dd-MM-yyyy')}</p>
+            <p>{t.signature}: _________________</p>
           </div>
         </div>
       </div>
@@ -489,20 +513,20 @@ export default function Reports() {
       <Dialog.Root open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 bg-black/50 z-40" />
-          <Dialog.Content className="fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] bg-white rounded-xl p-6 shadow-xl w-full max-w-md z-50 dir-rtl" dir="rtl">
+          <Dialog.Content className={`fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] bg-white rounded-xl p-6 shadow-xl w-full max-w-md z-50 ${isRtl ? 'dir-rtl' : 'dir-ltr'}`} dir={isRtl ? 'rtl' : 'ltr'}>
             <Dialog.Title className="text-xl font-bold text-gray-900 mb-4">
-              رپورٹ کالمز کی ترتیبات
+              {t.reportSettings}
             </Dialog.Title>
             
             <div className="space-y-4">
               {Object.entries({
-                date: 'تاریخ',
-                type: 'قسم',
-                donorName: 'تفصیل / نام',
-                amount: 'رقم',
-                percentage: 'فیصد',
-                collectorShare: 'کلیکٹر حصہ',
-                netAmount: 'نیٹ رقم'
+                date: t.date,
+                type: t.type,
+                donorName: t.donorName,
+                amount: t.amount,
+                percentage: t.percentage,
+                collectorShare: t.collectorShare,
+                netAmount: t.netAmount
               }).map(([key, label]) => (
                 <label key={key} className="flex items-center space-x-3 space-x-reverse cursor-pointer">
                   <input
@@ -511,7 +535,7 @@ export default function Reports() {
                     onChange={(e) => setColumns({...columns, [key]: e.target.checked})}
                     className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                   />
-                  <span className="text-gray-700">{label}</span>
+                  <span className={`mx-2 text-gray-700`}>{label}</span>
                 </label>
               ))}
             </div>
@@ -521,7 +545,7 @@ export default function Reports() {
                 onClick={() => setIsSettingsOpen(false)}
                 className="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700"
               >
-                محفوظ کریں
+                {t.save}
               </button>
             </div>
           </Dialog.Content>

@@ -37,37 +37,44 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         {statCards.map((stat, index) => {
           const Icon = stat.icon;
           return (
-            <div key={index} className="bg-white rounded-xl shadow-sm p-6 flex items-center gap-4">
-              <div className={`${stat.color} p-4 rounded-lg text-white`}>
-                <Icon className="w-6 h-6" />
+            <div key={index} className="bg-white rounded-xl shadow-sm p-4 md:p-6 flex items-center gap-4">
+              <div className={`${stat.color} p-3 md:p-4 rounded-lg text-white`}>
+                <Icon className="w-5 h-5 md:w-6 md:h-6" />
               </div>
-              <div>
-                <p className="text-sm text-gray-500 font-medium">{stat.title}</p>
-                <p className="text-2xl font-bold text-gray-900">{currency} {stat.amount.toLocaleString()}</p>
+              <div className="min-w-0">
+                <p className="text-xs md:text-sm text-gray-500 font-medium truncate">{stat.title}</p>
+                <p className="text-xl md:text-2xl font-bold text-gray-900 truncate">
+                  <span className="text-lg md:text-xl font-normal opacity-70">{currency}</span> {stat.amount.toLocaleString()}
+                </p>
               </div>
             </div>
           );
         })}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
         {/* Main Chart */}
-        <div className="bg-white rounded-xl shadow-sm p-6 lg:col-span-2">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">{t.recentDonations}</h3>
-          <div className="h-72">
+        <div className="bg-white rounded-xl shadow-sm p-4 md:p-6 lg:col-span-2">
+          <h3 className="text-base md:text-lg font-semibold text-gray-800 mb-4">{t.recentDonations}</h3>
+          <div className="h-64 md:h-72">
             {chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="date" />
-                  <YAxis />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                  <XAxis 
+                    dataKey="date" 
+                    tick={{ fontSize: 10 }} 
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis tick={{ fontSize: 10 }} />
                   <Tooltip 
+                    contentStyle={{ fontSize: '12px', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                     formatter={(value: number) => [`${currency} ${value.toLocaleString()}`, t.amount]}
                     labelFormatter={(label) => `${t.date}: ${label}`}
                   />
@@ -75,7 +82,7 @@ export default function Dashboard() {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-gray-400">
+              <div className="h-full flex items-center justify-center text-gray-400 text-sm italic">
                 {t.noData}
               </div>
             )}
@@ -83,27 +90,27 @@ export default function Dashboard() {
         </div>
 
         {/* Summary & Settings */}
-        <div className="space-y-6">
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-              <Activity className="w-5 h-5 mx-2 text-blue-500" />
+        <div className="space-y-4 md:space-y-6">
+          <div className="bg-white rounded-xl shadow-sm p-4 md:p-6">
+            <h3 className="text-base md:text-lg font-semibold text-gray-800 mb-4 flex items-center">
+              <Activity className="w-4 h-4 md:w-5 md:h-5 mx-2 text-blue-500" />
               {t.currentBalance}
             </h3>
-            <div className="text-4xl font-bold text-gray-900 mb-2">
+            <div className="text-3xl md:text-4xl font-bold text-gray-900 mb-2 truncate">
               {currency} {currentBalance.toLocaleString()}
             </div>
-            <p className="text-sm text-gray-500">
+            <p className="text-xs md:text-sm text-gray-500 italic">
               {t.netMinusExpenses}
             </p>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">{t.currentPercentage}</h3>
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
-              <span className="text-gray-600">{t.collectorShare}:</span>
-              <span className="text-2xl font-bold text-blue-600">{globalPercentage}%</span>
+          <div className="bg-white rounded-xl shadow-sm p-4 md:p-6">
+            <h3 className="text-base md:text-lg font-semibold text-gray-800 mb-4">{t.currentPercentage}</h3>
+            <div className="flex items-center justify-between p-3 md:p-4 bg-gray-50 rounded-lg border border-gray-100">
+              <span className="text-xs md:text-sm text-gray-600">{t.collectorShare}:</span>
+              <span className="text-xl md:text-2xl font-bold text-blue-600">{globalPercentage}%</span>
             </div>
-            <p className="text-xs text-gray-500 mt-3 text-center">
+            <p className="text-[10px] md:text-xs text-gray-400 mt-3 text-center uppercase font-medium tracking-wider">
               {t.adminCanChange}
             </p>
           </div>

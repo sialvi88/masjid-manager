@@ -8,10 +8,11 @@ import { translations } from '../translations';
 export default function Expenses() {
   const role = useStore(state => state.role);
   const currentUser = useStore(state => state.currentUser);
-  const isAdmin = currentUser?.role === 'Admin' || !!currentUser?.permissions.includes('manage_expenses');
+  const isAdmin = currentUser?.role === 'Admin';
   const expenses = useStore(state => state.expenses);
   const deletedExpenses = useStore(state => state.deletedExpenses);
   const addExpense = useStore(state => state.addExpense);
+  const loadAllExpenses = useStore(state => state.loadAllExpenses);
   const updateExpense = useStore(state => state.updateExpense);
   const deleteExpense = useStore(state => state.deleteExpense);
   const undoDeleteExpense = useStore(state => state.undoDeleteExpense);
@@ -116,38 +117,63 @@ export default function Expenses() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Header Actions */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="relative w-full md:w-64">
-          <div className={`absolute inset-y-0 ${isRtl ? 'right-0 pr-3' : 'left-0 pl-3'} flex items-center pointer-events-none`}>
-            <Search className="h-5 w-5 text-gray-400" />
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="relative w-full sm:w-64">
+            <div className={`absolute inset-y-0 ${isRtl ? 'right-0 pr-3' : 'left-0 pl-3'} flex items-center pointer-events-none`}>
+              <Search className="h-4 w-4 md:h-5 md:w-5 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              placeholder={t.search}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className={`block w-full ${isRtl ? 'pr-9 pl-3' : 'pl-9 pr-3'} py-1.5 md:py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500`}
+            />
           </div>
-          <input
-            type="text"
-            placeholder={t.search}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className={`block w-full ${isRtl ? 'pr-10 pl-3' : 'pl-10 pr-3'} py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500`}
-          />
+
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+            {isAdmin && (
+              <button
+                onClick={() => {
+                  setCurrentExpense({
+                    date: format(new Date(), 'yyyy-MM-dd'),
+                  });
+                  setIsAddModalOpen(true);
+                }}
+                className="flex-1 sm:flex-none flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm"
+              >
+                <Plus className={`w-4 h-4 ${isRtl ? 'ml-2' : 'mr-2'}`} />
+                {t.newExpense}
+              </button>
+            )}
+            <button
+               onClick={loadAllExpenses}
+               className="flex-1 sm:flex-none flex items-center justify-center px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+            >
+              {t.loadAll}
+            </button>
+          </div>
         </div>
 
         {isAdmin && (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 border-t border-gray-100 pt-4">
             {selectedIds.length > 0 && (
               <>
                 <button
                   onClick={() => setIsBulkEditModalOpen(true)}
-                  className="flex items-center px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+                  className="flex items-center px-3 py-1.5 bg-blue-50 text-blue-700 border border-blue-100 rounded-md hover:bg-blue-100 transition-colors text-xs font-medium"
                 >
-                  <Pencil className={`w-4 h-4 ${isRtl ? 'ml-2' : 'mr-2'}`} />
-                  Bulk Edit ({selectedIds.length})
+                  <Pencil className={`w-3.5 h-3.5 ${isRtl ? 'ml-1.5' : 'mr-1.5'}`} />
+                  {t.bulkEdit} ({selectedIds.length})
                 </button>
                 <button
                   onClick={handleBulkDelete}
-                  className="flex items-center px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
+                  className="flex items-center px-3 py-1.5 bg-red-50 text-red-700 border border-red-100 rounded-md hover:bg-red-100 transition-colors text-xs font-medium"
                 >
-                  <Trash2 className={`w-4 h-4 ${isRtl ? 'ml-2' : 'mr-2'}`} />
+                  <Trash2 className={`w-3.5 h-3.5 ${isRtl ? 'ml-1.5' : 'mr-1.5'}`} />
                   {t.deleteSelected} ({selectedIds.length})
                 </button>
               </>
@@ -155,88 +181,75 @@ export default function Expenses() {
             {deletedExpenses.length > 0 && (
               <button
                 onClick={undoDeleteExpense}
-                className="flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                className="flex items-center px-3 py-1.5 bg-gray-50 text-gray-700 border border-gray-200 rounded-md hover:bg-gray-100 transition-colors text-xs font-medium"
                 title={t.undoDelete}
               >
-                <Undo2 className={`w-4 h-4 ${isRtl ? 'ml-2' : 'mr-2'}`} />
+                <Undo2 className={`w-3.5 h-3.5 ${isRtl ? 'ml-1.5' : 'mr-1.5'}`} />
                 {t.undoDelete}
               </button>
             )}
-            
-            <button
-              onClick={() => {
-                setCurrentExpense({
-                  date: format(new Date(), 'yyyy-MM-dd'),
-                });
-                setIsAddModalOpen(true);
-              }}
-              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <Plus className={`w-4 h-4 ${isRtl ? 'ml-2' : 'mr-2'}`} />
-              {t.newExpense}
-            </button>
           </div>
         )}
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+      {/* Table Section */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
           <table className={`min-w-full divide-y divide-gray-200 ${isRtl ? 'text-right' : 'text-left'}`}>
             <thead className="bg-gray-50">
               <tr>
                 {isAdmin && (
-                  <th className={`px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-xs font-medium text-gray-500 uppercase tracking-wider w-12`}>
-                    <button onClick={handleSelectAll} className="text-gray-400 hover:text-gray-600">
+                  <th className={`px-4 md:px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-wider w-10 md:w-12`}>
+                    <button onClick={handleSelectAll} className="flex items-center">
                       {selectedIds.length === filteredExpenses.length && filteredExpenses.length > 0 
-                        ? <CheckSquare className="w-5 h-5" /> 
-                        : <Square className="w-5 h-5" />}
+                        ? <CheckSquare className="w-4 h-4 md:w-5 md:h-5 text-blue-600" /> 
+                        : <Square className="w-4 h-4 md:w-5 md:h-5" />}
                     </button>
                   </th>
                 )}
-                <th className={`px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-xs font-medium text-gray-500 uppercase tracking-wider`}>{t.date}</th>
-                <th className={`px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-xs font-medium text-gray-500 uppercase tracking-wider`}>{t.description}</th>
-                <th className={`px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-xs font-medium text-gray-500 uppercase tracking-wider`}>{t.amount}</th>
+                <th className={`px-4 md:px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider`}>{t.date}</th>
+                <th className={`px-4 md:px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider`}>{t.description}</th>
+                <th className={`px-4 md:px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider`}>{t.amount}</th>
                 {isAdmin && (
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{t.actions}</th>
+                  <th className="px-4 md:px-6 py-3 text-center text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider">{t.actions}</th>
                 )}
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-gray-100">
               {filteredExpenses.length === 0 ? (
                 <tr>
-                  <td colSpan={isAdmin ? 5 : 3} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={isAdmin ? 5 : 3} className="px-6 py-12 text-center text-gray-400 text-sm italic">
                     {t.noRecords}
                   </td>
                 </tr>
               ) : (
                 filteredExpenses.map((expense) => (
-                  <tr key={expense.id} className={selectedIds.includes(expense.id) ? 'bg-blue-50' : 'hover:bg-gray-50'}>
+                  <tr key={expense.id} className={`${selectedIds.includes(expense.id) ? 'bg-blue-50/50' : 'hover:bg-gray-50/50 transition-colors'}`}>
                     {isAdmin && (
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <button onClick={() => handleSelect(expense.id)} className="text-gray-400 hover:text-blue-600">
+                      <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap">
+                        <button onClick={() => handleSelect(expense.id)} className="flex items-center">
                           {selectedIds.includes(expense.id) 
-                            ? <CheckSquare className="w-5 h-5 text-blue-600" /> 
-                            : <Square className="w-5 h-5" />}
+                            ? <CheckSquare className="w-4 h-4 md:w-5 md:h-5 text-blue-600" /> 
+                            : <Square className="w-4 h-4 md:w-5 md:h-5 text-gray-300" />}
                         </button>
                       </td>
                     )}
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatDate(expense.date)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{expense.description}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-medium">{currency} {expense.amount.toLocaleString()}</td>
+                    <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-600">{formatDate(expense.date)}</td>
+                    <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm font-semibold text-gray-800">{expense.description}</td>
+                    <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-red-600 font-bold tabular-nums">{currency} {expense.amount.toLocaleString()}</td>
                     {isAdmin && (
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-center">
-                        <div className="flex justify-center gap-3">
-                          <button onClick={() => openEditModal(expense)} className="text-blue-600 hover:text-blue-900" title={t.edit}>
-                            <Pencil className="w-4 h-4" />
+                      <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-sm font-medium text-center">
+                        <div className="flex justify-center gap-2 md:gap-3">
+                          <button onClick={() => openEditModal(expense)} className="p-1.5 text-blue-600 hover:bg-blue-100 rounded transition-colors" title={t.edit}>
+                            <Pencil className="w-3.5 h-3.5 md:w-4 md:h-4" />
                           </button>
                           <button 
                             onClick={async () => {
                               if(window.confirm(t.areYouSureDelete)) await deleteExpense(expense.id);
                             }} 
-                            className="text-red-600 hover:text-red-900" title={t.delete}
+                            className="p-1.5 text-red-500 hover:bg-red-100 rounded transition-colors" title={t.delete}
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
                           </button>
                         </div>
                       </td>
@@ -324,25 +337,25 @@ export default function Expenses() {
           <Dialog.Overlay className="fixed inset-0 bg-black/50 z-40" />
           <Dialog.Content className={`fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] bg-white rounded-xl p-6 shadow-xl w-full max-w-md z-50 ${isRtl ? 'dir-rtl' : 'dir-ltr'}`} dir={isRtl ? 'rtl' : 'ltr'}>
             <Dialog.Title className="text-xl font-bold text-gray-900 mb-4">
-              Bulk Edit ({selectedIds.length} selected)
+              {t.bulkEdit} ({selectedIds.length} {t.selected})
             </Dialog.Title>
             
             <form onSubmit={handleBulkEditSubmit} className="space-y-4">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                 <p className="text-sm text-blue-800">
-                  Leave fields empty if you do not want to change them.
+                  {t.bulkEditHelp}
                 </p>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t.description}</label>
-                <input
-                  type="text"
-                  value={bulkEditData.description || ''}
-                  onChange={(e) => setBulkEditData({...bulkEditData, description: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Leave empty to keep current"
-                />
+                  <input
+                    type="text"
+                    value={bulkEditData.description || ''}
+                    onChange={(e) => setBulkEditData({...bulkEditData, description: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    placeholder={t.leaveEmptyToKeepCurrent}
+                  />
               </div>
 
               <div>

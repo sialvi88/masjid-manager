@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useStore, User, Permission } from '../store';
 import { Users, UserPlus, Edit2, Trash2, Shield, Key, User as UserIcon } from 'lucide-react';
+import { translations } from '../translations';
 
 const availablePermissions: { id: Permission; label: string; labelUr: string }[] = [
   { id: 'manage_donations', label: 'Manage Donations', labelUr: 'عطیات کا انتظام' },
@@ -13,6 +14,7 @@ const availablePermissions: { id: Permission; label: string; labelUr: string }[]
 export default function UserManagement() {
   const store = useStore();
   const { users, addUser, updateUser, deleteUser, language, currentUser } = store;
+  const t = translations[language];
   const isRtl = language === 'ur';
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -60,7 +62,7 @@ export default function UserManagement() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.username || !formData.pin) {
-      alert('Username and PIN are required');
+      alert(t.usernamePinRequired);
       return;
     }
 
@@ -69,7 +71,7 @@ export default function UserManagement() {
     } else {
       // Check if username already exists
       if (users.some(u => u.username.toLowerCase() === formData.username.toLowerCase())) {
-        alert('Username already exists');
+        alert(t.usernameExists);
         return;
       }
       await addUser(formData);
@@ -79,10 +81,10 @@ export default function UserManagement() {
 
   const handleDelete = async (id: string) => {
     if (id === currentUser?.id) {
-      alert('You cannot delete your own account while logged in.');
+      alert(t.cannotDeleteOwnAccount);
       return;
     }
-    if (window.confirm('Are you sure you want to delete this user?')) {
+    if (window.confirm(t.deleteUserConfirm)) {
       await deleteUser(id);
     }
   };
@@ -91,15 +93,15 @@ export default function UserManagement() {
     <div className="bg-white p-6 rounded-xl shadow-sm">
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-2">
-          <Users className="w-6 h-6 text-indigo-600" />
-          <h2 className="text-xl font-bold text-gray-900">User Management (صارفین کا انتظام)</h2>
+          <Users className={`w-6 h-6 text-indigo-600 ${isRtl ? 'ml-2' : 'mr-2'}`} />
+          <h2 className="text-xl font-bold text-gray-900">{t.userManagement}</h2>
         </div>
         <button
           onClick={() => openModal()}
           className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
         >
-          <UserPlus className="w-4 h-4" />
-          Add User
+          <UserPlus className={`w-4 h-4 ${isRtl ? 'ml-2' : 'mr-2'}`} />
+          {t.addUser}
         </button>
       </div>
 
@@ -107,10 +109,10 @@ export default function UserManagement() {
         <table className={`min-w-full divide-y divide-gray-200 ${isRtl ? 'text-right' : 'text-left'}`}>
           <thead className="bg-gray-50">
             <tr>
-              <th className={`px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-xs font-medium text-gray-500 uppercase`}>Username</th>
-              <th className={`px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-xs font-medium text-gray-500 uppercase`}>Role</th>
-              <th className={`px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-xs font-medium text-gray-500 uppercase`}>Permissions</th>
-              <th className={`px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-xs font-medium text-gray-500 uppercase`}>Actions</th>
+              <th className={`px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-xs font-medium text-gray-500 uppercase`}>{t.username}</th>
+              <th className={`px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-xs font-medium text-gray-500 uppercase`}>{t.role}</th>
+              <th className={`px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-xs font-medium text-gray-500 uppercase`}>{t.permissions}</th>
+              <th className={`px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-xs font-medium text-gray-500 uppercase`}>{t.actions}</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -146,7 +148,7 @@ export default function UserManagement() {
                       <button
                         onClick={() => openModal(user)}
                         className="text-indigo-600 hover:text-indigo-900"
-                        title="Edit User"
+                        title={t.editUser}
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
@@ -155,7 +157,7 @@ export default function UserManagement() {
                       <button
                         onClick={() => handleDelete(user.id)}
                         className="text-red-600 hover:text-red-900"
-                        title="Delete User"
+                        title={t.deleteUser}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -174,7 +176,7 @@ export default function UserManagement() {
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto" dir={isRtl ? 'rtl' : 'ltr'}>
             <div className="p-6 border-b border-gray-100 flex justify-between items-center sticky top-0 bg-white z-10">
               <h3 className="text-xl font-bold text-gray-900">
-                {editingUser ? (isRtl ? 'صارف میں ترمیم کریں' : 'Edit User') : (isRtl ? 'نیا صارف شامل کریں' : 'Add New User')}
+                {editingUser ? t.editUser : t.addNewUser}
               </h3>
               <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600">
                 ✕
@@ -183,7 +185,7 @@ export default function UserManagement() {
             
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Username (یوزر نیم)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t.username}</label>
                 <div className="relative">
                   <div className={`absolute inset-y-0 ${isRtl ? 'right-0 pr-3' : 'left-0 pl-3'} flex items-center pointer-events-none`}>
                     <UserIcon className="h-5 w-5 text-gray-400" />
@@ -199,7 +201,7 @@ export default function UserManagement() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">PIN / Password (پاس ورڈ)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t.pinPassword}</label>
                 <div className="relative">
                   <div className={`absolute inset-y-0 ${isRtl ? 'right-0 pr-3' : 'left-0 pl-3'} flex items-center pointer-events-none`}>
                     <Key className="h-5 w-5 text-gray-400" />
@@ -215,7 +217,7 @@ export default function UserManagement() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Role Title (عہدہ)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t.roleTitle}</label>
                 <div className="relative">
                   <div className={`absolute inset-y-0 ${isRtl ? 'right-0 pr-3' : 'left-0 pl-3'} flex items-center pointer-events-none`}>
                     <Shield className="h-5 w-5 text-gray-400" />
@@ -232,7 +234,7 @@ export default function UserManagement() {
               </div>
 
               <div className="pt-4 border-t border-gray-100">
-                <label className="block text-sm font-medium text-gray-900 mb-3">Permissions (اختیارات)</label>
+                <label className="block text-sm font-medium text-gray-900 mb-3">{t.permissions}</label>
                 <div className="space-y-2">
                   {availablePermissions.map((perm) => (
                     <label key={perm.id} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg cursor-pointer border border-transparent hover:border-gray-200 transition-colors">
@@ -244,8 +246,7 @@ export default function UserManagement() {
                         className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 disabled:opacity-50"
                       />
                       <div className="flex flex-col">
-                        <span className="text-sm font-medium text-gray-900">{perm.label}</span>
-                        <span className="text-xs text-gray-500">{perm.labelUr}</span>
+                        <span className="text-sm font-medium text-gray-900">{isRtl ? perm.labelUr : perm.label}</span>
                       </div>
                     </label>
                   ))}
@@ -258,13 +259,13 @@ export default function UserManagement() {
                   onClick={() => setIsModalOpen(false)}
                   className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
                 >
-                  Cancel
+                  {t.cancel}
                 </button>
                 <button
                   type="submit"
                   className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
                 >
-                  {editingUser ? 'Update User' : 'Create User'}
+                  {editingUser ? t.updateUser : t.createUser}
                 </button>
               </div>
             </form>

@@ -12,6 +12,11 @@ import Donations from './components/Donations';
 import Expenses from './components/Expenses';
 import Reports from './components/Reports';
 import AdminTools from './components/AdminTools';
+import NewsSettings from './components/NewsSettings';
+import FutureProjects from './components/FutureProjects';
+import DonationMethods from './components/DonationMethods';
+import DialysisManagement from './components/DialysisManagement';
+import WaterFilterManagement from './components/WaterFilterManagement';
 
 export default function App() {
   const role = useStore((state) => state.role);
@@ -66,6 +71,11 @@ export default function App() {
       case 'expenses': return <Expenses />;
       case 'reports': return <Reports />;
       case 'admin-tools': return <AdminTools />;
+      case 'news-settings': return <NewsSettings />;
+      case 'future-projects': return <FutureProjects onDonateClick={() => setCurrentTab('donation-methods')} />;
+      case 'donation-methods': return <DonationMethods />;
+      case 'dialysis-mgmt': return <DialysisManagement />;
+      case 'water-filter-mgmt': return <WaterFilterManagement />;
       default: return <Dashboard />;
     }
   };

@@ -3,7 +3,8 @@ import { useStore, Donation } from '../store';
 import { format } from 'date-fns';
 import { 
   Pencil, Trash2, Copy, Plus, Settings, 
-  CheckSquare, Square, Search, AlertCircle, History
+  CheckSquare, Square, Search, AlertCircle, History,
+  ChevronDown
 } from 'lucide-react';
 import * as Dialog from '@radix-ui/react-dialog';
 import * as Slider from '@radix-ui/react-slider';
@@ -13,10 +14,11 @@ export default function Donations() {
   const role = useStore(state => state.role);
   const currentUser = useStore(state => state.currentUser);
   const donations = useStore(state => state.donations);
-  const isAdmin = currentUser?.role === 'Admin' || !!currentUser?.permissions.includes('manage_donations');
+  const isAdmin = currentUser?.role === 'Admin';
   const globalPercentage = useStore(state => state.globalPercentage);
   const setGlobalPercentage = useStore(state => state.setGlobalPercentage);
   const addDonation = useStore(state => state.addDonation);
+  const loadAllDonations = useStore(state => state.loadAllDonations);
   const updateDonation = useStore(state => state.updateDonation);
   const deleteDonation = useStore(state => state.deleteDonation);
   const duplicateDonation = useStore(state => state.duplicateDonation);
@@ -27,6 +29,81 @@ export default function Donations() {
   const t = translations[language];
   const isRtl = language === 'ur';
   const { currency, dateFormat } = settings;
+
+  const DonorNameSelector = ({ value, onChange, categories, t, isRtl }: any) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const filteredCategories = (categories || []).filter((cat: string) => 
+      cat.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    return (
+      <div className="relative">
+        <div className="flex gap-1">
+          <input
+            type="text"
+            required
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+          />
+            <button
+              type="button"
+              onClick={() => setIsOpen(!isOpen)}
+              className="px-2 border border-gray-300 rounded-md bg-gray-50 hover:bg-gray-100 transition-colors"
+              title={t.selectCategory}
+            >
+            <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+        
+        {isOpen && (
+          <>
+            <div className="fixed inset-0 z-[55]" onClick={() => setIsOpen(false)} />
+            <div className={`absolute z-[60] mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-hidden flex flex-col ${isRtl ? 'right-0' : 'left-0'}`}>
+              <div className="p-2 border-b border-gray-100 bg-gray-50">
+                <div className="relative">
+                  <Search className={`absolute ${isRtl ? 'right-2' : 'left-2'} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400`} />
+                    <input
+                      type="text"
+                      placeholder={t.search + "..."}
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className={`w-full ${isRtl ? 'pr-8 pl-3' : 'pl-8 pr-3'} py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500`}
+                      autoFocus
+                    />
+                </div>
+              </div>
+              <div className="overflow-y-auto py-1">
+                {filteredCategories.length > 0 ? (
+                  filteredCategories.map((cat: string, idx: number) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        onChange(cat);
+                        setIsOpen(false);
+                      }}
+                      className={`w-full ${isRtl ? 'text-right' : 'text-left'} px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors flex items-center justify-between group`}
+                    >
+                      <span>{cat}</span>
+                      <Plus className="w-3 h-3 opacity-0 group-hover:opacity-100 text-blue-400" />
+                    </button>
+                  ))
+                ) : (
+                  <div className="px-4 py-6 text-sm text-gray-500 text-center italic">
+                    {t.noCategoriesFound}
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
+
 
   const formatDate = (dateStr: string) => {
     try {
@@ -82,7 +159,7 @@ export default function Donations() {
         donorName: currentDonation.donorName,
         amount: Number(currentDonation.amount),
         date: currentDonation.date,
-        percentage: currentDonation.percentage ?? globalPercentage
+        percentage: currentDonation.percentage !== undefined ? currentDonation.percentage : 0
       });
       setIsAddModalOpen(false);
       setCurrentDonation({});
@@ -143,138 +220,150 @@ export default function Donations() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Header Actions */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="relative w-full md:w-64">
-          <div className={`absolute inset-y-0 ${isRtl ? 'right-0 pr-3' : 'left-0 pl-3'} flex items-center pointer-events-none`}>
-            <Search className="h-5 w-5 text-gray-400" />
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="relative w-full sm:w-64">
+            <div className={`absolute inset-y-0 ${isRtl ? 'right-0 pr-3' : 'left-0 pl-3'} flex items-center pointer-events-none`}>
+              <Search className="h-4 w-4 md:h-5 md:w-5 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              placeholder={t.search}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className={`block w-full ${isRtl ? 'pr-9 pl-3' : 'pl-9 pr-3'} py-1.5 md:py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500`}
+            />
           </div>
-          <input
-            type="text"
-            placeholder={t.search}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className={`block w-full ${isRtl ? 'pr-10 pl-3' : 'pl-10 pr-3'} py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500`}
-          />
+
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+            {isAdmin && (
+              <button
+                onClick={() => {
+                  setCurrentDonation({
+                    date: format(new Date(), 'yyyy-MM-dd'),
+                    percentage: 0
+                  });
+                  setIsAddModalOpen(true);
+                }}
+                className="flex-1 sm:flex-none flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm"
+              >
+                <Plus className={`w-4 h-4 ${isRtl ? 'ml-2' : 'mr-2'}`} />
+                {t.newDonation}
+              </button>
+            )}
+            <button
+               onClick={loadAllDonations}
+               className="flex-1 sm:flex-none flex items-center justify-center px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+            >
+              {t.loadAll}
+            </button>
+          </div>
         </div>
 
         {isAdmin && (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 border-t border-gray-100 pt-4">
+            <button
+              onClick={() => setIsPercentageModalOpen(true)}
+              className="flex items-center px-3 py-1.5 bg-orange-50 text-orange-700 border border-orange-100 rounded-md hover:bg-orange-100 transition-colors text-xs font-medium"
+            >
+              <Settings className={`w-3.5 h-3.5 ${isRtl ? 'ml-1.5' : 'mr-1.5'}`} />
+              {t.changePercentage}
+            </button>
+
             {selectedIds.length > 0 && (
               <>
                 <button
                   onClick={() => setIsBulkEditModalOpen(true)}
-                  className="flex items-center px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+                  className="flex items-center px-3 py-1.5 bg-blue-50 text-blue-700 border border-blue-100 rounded-md hover:bg-blue-100 transition-colors text-xs font-medium"
                 >
-                  <Pencil className={`w-4 h-4 ${isRtl ? 'ml-2' : 'mr-2'}`} />
-                  Bulk Edit ({selectedIds.length})
+                  <Pencil className={`w-3.5 h-3.5 ${isRtl ? 'ml-1.5' : 'mr-1.5'}`} />
+                  {t.bulkEdit} ({selectedIds.length})
                 </button>
                 <button
                   onClick={handleBulkDelete}
-                  className="flex items-center px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
+                  className="flex items-center px-3 py-1.5 bg-red-50 text-red-700 border border-red-100 rounded-md hover:bg-red-100 transition-colors text-xs font-medium"
                 >
-                  <Trash2 className={`w-4 h-4 ${isRtl ? 'ml-2' : 'mr-2'}`} />
+                  <Trash2 className={`w-3.5 h-3.5 ${isRtl ? 'ml-1.5' : 'mr-1.5'}`} />
                   {t.deleteSelected} ({selectedIds.length})
                 </button>
               </>
             )}
-            
-            <button
-              onClick={() => setIsPercentageModalOpen(true)}
-              className="flex items-center px-4 py-2 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-colors"
-            >
-              <Settings className={`w-4 h-4 ${isRtl ? 'ml-2' : 'mr-2'}`} />
-              {t.changePercentage}
-            </button>
-
-            <button
-              onClick={() => {
-                setCurrentDonation({
-                  date: format(new Date(), 'yyyy-MM-dd'),
-                  percentage: globalPercentage
-                });
-                setIsAddModalOpen(true);
-              }}
-              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <Plus className={`w-4 h-4 ${isRtl ? 'ml-2' : 'mr-2'}`} />
-              {t.newDonation}
-            </button>
           </div>
         )}
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+      {/* Table Section */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
           <table className={`min-w-full divide-y divide-gray-200 ${isRtl ? 'text-right' : 'text-left'}`}>
             <thead className="bg-gray-50">
               <tr>
                 {isAdmin && (
-                  <th className={`px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-xs font-medium text-gray-500 uppercase tracking-wider w-12`}>
-                    <button onClick={handleSelectAll} className="text-gray-400 hover:text-gray-600">
+                  <th className={`px-4 md:px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-wider w-10 md:w-12`}>
+                    <button onClick={handleSelectAll} className="flex items-center">
                       {selectedIds.length === filteredDonations.length && filteredDonations.length > 0 
-                        ? <CheckSquare className="w-5 h-5" /> 
-                        : <Square className="w-5 h-5" />}
+                        ? <CheckSquare className="w-4 h-4 md:w-5 md:h-5 text-blue-600" /> 
+                        : <Square className="w-4 h-4 md:w-5 md:h-5" />}
                     </button>
                   </th>
                 )}
-                <th className={`px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-xs font-medium text-gray-500 uppercase tracking-wider`}>{t.date}</th>
-                <th className={`px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-xs font-medium text-gray-500 uppercase tracking-wider`}>{t.donorName}</th>
-                <th className={`px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-xs font-medium text-gray-500 uppercase tracking-wider`}>{t.amount}</th>
-                <th className={`px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-xs font-medium text-gray-500 uppercase tracking-wider`}>{t.percentage}</th>
-                <th className={`px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-xs font-medium text-gray-500 uppercase tracking-wider`}>{t.collectorShare}</th>
-                <th className={`px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-xs font-medium text-gray-500 uppercase tracking-wider`}>{t.netAmount}</th>
+                <th className={`px-4 md:px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider`}>{t.date}</th>
+                <th className={`px-4 md:px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider`}>{t.donorName}</th>
+                <th className={`px-4 md:px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider`}>{t.amount}</th>
+                <th className={`px-4 md:px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider`}>{t.percentage}</th>
+                <th className={`px-4 md:px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider`}>{t.collectorShare}</th>
+                <th className={`px-4 md:px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider`}>{t.netAmount}</th>
                 {isAdmin && (
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{t.actions}</th>
+                  <th className="px-4 md:px-6 py-3 text-center text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider">{t.actions}</th>
                 )}
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-gray-100">
               {filteredDonations.length === 0 ? (
                 <tr>
-                  <td colSpan={isAdmin ? 8 : 7} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={isAdmin ? 8 : 7} className="px-6 py-12 text-center text-gray-400 text-sm italic">
                     {t.noRecords}
                   </td>
                 </tr>
               ) : (
                 filteredDonations.map((donation) => (
-                  <tr key={donation.id} className={selectedIds.includes(donation.id) ? 'bg-blue-50' : 'hover:bg-gray-50'}>
+                  <tr key={donation.id} className={`${selectedIds.includes(donation.id) ? 'bg-blue-50/50' : 'hover:bg-gray-50/50 transition-colors'}`}>
                     {isAdmin && (
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <button onClick={() => handleSelect(donation.id)} className="text-gray-400 hover:text-blue-600">
+                      <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap">
+                        <button onClick={() => handleSelect(donation.id)} className="flex items-center">
                           {selectedIds.includes(donation.id) 
-                            ? <CheckSquare className="w-5 h-5 text-blue-600" /> 
-                            : <Square className="w-5 h-5" />}
+                            ? <CheckSquare className="w-4 h-4 md:w-5 md:h-5 text-blue-600" /> 
+                            : <Square className="w-4 h-4 md:w-5 md:h-5 text-gray-300" />}
                         </button>
                       </td>
                     )}
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatDate(donation.date)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{donation.donorName}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{currency} {donation.amount.toLocaleString()}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{donation.percentage}%</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-orange-600">{currency} {donation.collectorShare.toLocaleString()}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-medium">{currency} {donation.netAmount.toLocaleString()}</td>
+                    <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-600">{formatDate(donation.date)}</td>
+                    <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm font-semibold text-gray-800">{donation.donorName}</td>
+                    <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-900 tabular-nums">{currency} {donation.amount.toLocaleString()}</td>
+                    <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-500">{donation.percentage}%</td>
+                    <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-orange-600 font-medium tabular-nums">{currency} {donation.collectorShare.toLocaleString()}</td>
+                    <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-green-600 font-bold tabular-nums">{currency} {donation.netAmount.toLocaleString()}</td>
                     {isAdmin && (
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-center">
-                        <div className="flex justify-center gap-3">
-                          <button onClick={() => openEditModal(donation)} className="text-blue-600 hover:text-blue-900" title={t.edit}>
-                            <Pencil className="w-4 h-4" />
+                      <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-sm font-medium text-center">
+                        <div className="flex justify-center gap-2 md:gap-3">
+                          <button onClick={() => openEditModal(donation)} className="p-1.5 text-blue-600 hover:bg-blue-100 rounded transition-colors" title={t.edit}>
+                            <Pencil className="w-3.5 h-3.5 md:w-4 md:h-4" />
                           </button>
-                          <button onClick={async () => await duplicateDonation(donation.id)} className="text-green-600 hover:text-green-900" title={t.duplicate}>
-                            <Copy className="w-4 h-4" />
+                          <button onClick={async () => await duplicateDonation(donation.id)} className="p-1.5 text-green-600 hover:bg-green-100 rounded transition-colors" title={t.duplicate}>
+                            <Copy className="w-3.5 h-3.5 md:w-4 md:h-4" />
                           </button>
-                          <button onClick={() => openHistoryModal(donation)} className="text-gray-600 hover:text-gray-900" title={t.history}>
-                            <History className="w-4 h-4" />
+                          <button onClick={() => openHistoryModal(donation)} className="p-1.5 text-gray-500 hover:bg-gray-100 rounded transition-colors" title={t.history}>
+                            <History className="w-3.5 h-3.5 md:w-4 md:h-4" />
                           </button>
                           <button 
                             onClick={async () => {
                               if(window.confirm(t.areYouSureDelete)) await deleteDonation(donation.id);
                             }} 
-                            className="text-red-600 hover:text-red-900" title={t.delete}
+                            className="p-1.5 text-red-500 hover:bg-red-100 rounded transition-colors" title={t.delete}
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
                           </button>
                         </div>
                       </td>
@@ -304,12 +393,12 @@ export default function Donations() {
             <form onSubmit={isEditModalOpen ? handleEditSubmit : handleAddSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t.donorName}</label>
-                <input
-                  type="text"
-                  required
+                <DonorNameSelector
                   value={currentDonation.donorName || ''}
-                  onChange={(e) => setCurrentDonation({...currentDonation, donorName: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  onChange={(val: string) => setCurrentDonation({...currentDonation, donorName: val})}
+                  categories={settings.donorCategories}
+                  t={t}
+                  isRtl={isRtl}
                 />
               </div>
               
@@ -340,12 +429,12 @@ export default function Donations() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t.percentage}</label>
                 <input
                   type="number"
-                  required
                   min="0"
                   max="100"
-                  value={currentDonation.percentage || ''}
-                  onChange={(e) => setCurrentDonation({...currentDonation, percentage: Number(e.target.value)})}
+                  value={currentDonation.percentage !== undefined ? currentDonation.percentage : ''}
+                  onChange={(e) => setCurrentDonation({...currentDonation, percentage: e.target.value === '' ? 0 : Number(e.target.value)})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="0"
                 />
               </div>
 
@@ -475,24 +564,24 @@ export default function Donations() {
           <Dialog.Overlay className="fixed inset-0 bg-black/50 z-40" />
           <Dialog.Content className={`fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] bg-white rounded-xl p-6 shadow-xl w-full max-w-md z-50 ${isRtl ? 'dir-rtl' : 'dir-ltr'}`} dir={isRtl ? 'rtl' : 'ltr'}>
             <Dialog.Title className="text-xl font-bold text-gray-900 mb-4">
-              Bulk Edit ({selectedIds.length} selected)
+              {t.bulkEdit} ({selectedIds.length} {t.selected})
             </Dialog.Title>
             
             <form onSubmit={handleBulkEditSubmit} className="space-y-4">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                 <p className="text-sm text-blue-800">
-                  Leave fields empty if you do not want to change them.
+                  {t.bulkEditHelp}
                 </p>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t.donorName}</label>
-                <input
-                  type="text"
+                <DonorNameSelector
                   value={bulkEditData.donorName || ''}
-                  onChange={(e) => setBulkEditData({...bulkEditData, donorName: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Leave empty to keep current"
+                  onChange={(val: string) => setBulkEditData({...bulkEditData, donorName: val})}
+                  categories={settings.donorCategories}
+                  t={t}
+                  isRtl={isRtl}
                 />
               </div>
 
@@ -508,15 +597,15 @@ export default function Donations() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t.percentage}</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={bulkEditData.percentage || ''}
-                  onChange={(e) => setBulkEditData({...bulkEditData, percentage: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Leave empty to keep current"
-                />
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={bulkEditData.percentage || ''}
+                    onChange={(e) => setBulkEditData({...bulkEditData, percentage: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    placeholder={t.leaveEmptyToKeepCurrent}
+                  />
               </div>
 
               <div className="mt-6 flex justify-end gap-3">

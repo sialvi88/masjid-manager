@@ -18,10 +18,30 @@ export default function AdminTools() {
 
   // Settings State
   const [localSettings, setLocalSettings] = useState(settings);
+  const [newCategory, setNewCategory] = useState('');
+
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const handleSaveSettings = async () => {
     await updateSettings(localSettings);
-    alert('Settings saved successfully!');
+    store.addAuditLog({ action: 'UPDATE', entity: 'SETTINGS', details: 'Settings saved', user: 'Admin' });
+  };
+
+  const handleAddCategory = () => {
+    if (newCategory.trim() && !localSettings.donorCategories?.includes(newCategory.trim())) {
+      setLocalSettings({
+        ...localSettings,
+        donorCategories: [...(localSettings.donorCategories || []), newCategory.trim()]
+      });
+      setNewCategory('');
+    }
+  };
+
+  const handleRemoveCategory = (catToRemove: string) => {
+    setLocalSettings({
+      ...localSettings,
+      donorCategories: (localSettings.donorCategories || []).filter(cat => cat !== catToRemove)
+    });
   };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -158,16 +178,16 @@ export default function AdminTools() {
 
       {/* Admin Settings */}
       {hasPermission('manage_settings') && (
-        <div className="bg-white p-6 rounded-xl shadow-sm">
+        <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm">
         <div className="flex items-center gap-2 mb-6">
-          <Settings className="w-6 h-6 text-gray-700" />
-          <h2 className="text-xl font-bold text-gray-900">Admin Settings (ایڈمن سیٹنگز)</h2>
+          <Settings className={`w-5 h-5 md:w-6 md:h-6 text-gray-700 ${isRtl ? 'ml-2' : 'mr-2'}`} />
+          <h2 className="text-lg md:text-xl font-bold text-gray-900">{t.adminSettings}</h2>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Masjid Name (مسجد کا نام)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.centerName}</label>
               <input 
                 type="text" 
                 value={localSettings.masjidName}
@@ -176,7 +196,7 @@ export default function AdminTools() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Madrisa Name (مدرسے کا نام)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.branchName}</label>
               <input 
                 type="text" 
                 value={localSettings.madrisaName}
@@ -185,7 +205,7 @@ export default function AdminTools() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Currency (کرنسی)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.currency}</label>
               <select 
                 value={localSettings.currency}
                 onChange={(e) => setLocalSettings({...localSettings, currency: e.target.value})}
@@ -196,11 +216,48 @@ export default function AdminTools() {
                 <option value="£">£ (GBP)</option>
               </select>
             </div>
+            
+            <div className="pt-4 border-t border-gray-100">
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t.donorCategories}</label>
+              <div className="flex gap-2 mb-3">
+                <input 
+                  type="text" 
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  placeholder={t.newCategory + "..."}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddCategory()}
+                />
+                <button 
+                  onClick={handleAddCategory}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+                >
+                  {t.add}
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-2 bg-gray-50 rounded-md border border-gray-100">
+                {(localSettings.donorCategories || []).length === 0 ? (
+                   <span className="text-sm text-gray-500 italic">{t.noCategoriesFound}</span>
+                ) : (
+                  (localSettings.donorCategories || []).map((cat, idx) => (
+                    <div key={idx} className="flex items-center gap-1 bg-white border border-gray-200 px-2 py-1 rounded-md text-sm shadow-sm">
+                      <span className="text-gray-700">{cat}</span>
+                      <button 
+                        onClick={() => handleRemoveCategory(cat)}
+                        className="text-red-500 hover:text-red-700 ml-1"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
           </div>
           
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Date Format (تاریخ کا فارمیٹ)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.dateFormat}</label>
               <select 
                 value={localSettings.dateFormat}
                 onChange={(e) => setLocalSettings({...localSettings, dateFormat: e.target.value})}
@@ -212,7 +269,7 @@ export default function AdminTools() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Default Percentage (ڈیفالٹ فیصد)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.defaultPercentage}</label>
               <input 
                 type="number" 
                 value={localSettings.defaultPercentage}
@@ -221,7 +278,7 @@ export default function AdminTools() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Logo (لوگو)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t.logo}</label>
               <div className="flex flex-wrap items-center gap-3">
                 {localSettings.logoUrl && (
                   <img src={localSettings.logoUrl} alt="Logo" className="h-12 w-12 object-contain border rounded bg-white shadow-sm" />
@@ -238,21 +295,21 @@ export default function AdminTools() {
                   htmlFor="logo-upload"
                   className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 cursor-pointer text-sm font-medium border border-gray-200"
                 >
-                  Upload Image
+                  {t.uploadImage}
                 </label>
                 <button 
                   onClick={setDefaultLogo}
                   className="flex items-center gap-1 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-md hover:bg-emerald-100 cursor-pointer text-sm font-medium border border-emerald-200"
                 >
                   <ImageIcon className="w-4 h-4" />
-                  Default Logo
+                  {t.defaultLogo}
                 </button>
                 {localSettings.logoUrl && (
                   <button 
                     onClick={() => setLocalSettings({...localSettings, logoUrl: null})}
                     className="text-red-600 text-sm hover:underline font-medium ml-2"
                   >
-                    Remove
+                    {t.remove}
                   </button>
                 )}
               </div>
@@ -263,10 +320,10 @@ export default function AdminTools() {
         <div className="mt-6 flex justify-end">
           <button 
             onClick={handleSaveSettings}
-            className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm md:text-base font-semibold transition-all shadow-md active:scale-95"
           >
-            <Save className="w-4 h-4" />
-            Save Settings
+            <Save className={`w-4 h-4 md:w-5 md:h-5 ${isRtl ? 'ml-2' : 'mr-2'}`} />
+            {t.saveSettings}
           </button>
         </div>
       </div>
@@ -279,8 +336,8 @@ export default function AdminTools() {
             {/* Backup & Restore */}
         <div className="bg-white p-6 rounded-xl shadow-sm space-y-4">
           <div className="flex items-center gap-2 mb-4">
-            <Database className="w-6 h-6 text-blue-600" />
-            <h2 className="text-xl font-bold text-gray-900">Backup & Restore</h2>
+            <Database className={`w-6 h-6 text-blue-600 ${isRtl ? 'ml-2' : 'mr-2'}`} />
+            <h2 className="text-xl font-bold text-gray-900">{t.backupRestore}</h2>
           </div>
           
           <div className="space-y-3">
@@ -288,19 +345,19 @@ export default function AdminTools() {
               onClick={handleBackup}
               className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
-              <Download className="w-4 h-4" />
-              Backup All Data (JSON)
+              <Download className={`w-4 h-4 ${isRtl ? 'ml-2' : 'mr-2'}`} />
+              {t.backupAllData}
             </button>
             
             <div className="pt-4 border-t border-gray-100">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Restore / Import Mode</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t.restoreImportMode}</label>
               <select 
                 value={importMode}
                 onChange={(e) => setImportMode(e.target.value as 'merge' | 'replace')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md mb-3"
               >
-                <option value="merge">Merge with existing data</option>
-                <option value="replace">Replace existing data</option>
+                <option value="merge">{t.mergeExisting}</option>
+                <option value="replace">{t.replaceExisting}</option>
               </select>
 
               <input
@@ -315,13 +372,13 @@ export default function AdminTools() {
                 htmlFor="restore-file"
                 className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 cursor-pointer"
               >
-                <Upload className="w-4 h-4" />
-                Restore Data (JSON)
+                <Upload className={`w-4 h-4 ${isRtl ? 'ml-2' : 'mr-2'}`} />
+                {t.restoreData}
               </label>
             </div>
             
             <p className="text-xs text-gray-500 text-center mt-2">
-              * Auto Backup is handled by browser local storage automatically.
+              {t.autoBackupNote}
             </p>
           </div>
         </div>
@@ -329,8 +386,8 @@ export default function AdminTools() {
         {/* Import & Export */}
         <div className="bg-white p-6 rounded-xl shadow-sm space-y-4">
           <div className="flex items-center gap-2 mb-4">
-            <FileSpreadsheet className="w-6 h-6 text-green-600" />
-            <h2 className="text-xl font-bold text-gray-900">Export & Import</h2>
+            <FileSpreadsheet className={`w-6 h-6 text-green-600 ${isRtl ? 'ml-2' : 'mr-2'}`} />
+            <h2 className="text-xl font-bold text-gray-900">{t.exportImport}</h2>
           </div>
           
           <div className="space-y-3">
@@ -338,8 +395,8 @@ export default function AdminTools() {
               onClick={exportToCSV}
               className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
             >
-              <FileText className="w-4 h-4" />
-              Export to CSV
+              <FileText className={`w-4 h-4 ${isRtl ? 'ml-2' : 'mr-2'}`} />
+              {t.exportCSV}
             </button>
 
             <div className="pt-4 border-t border-gray-100">
@@ -354,8 +411,8 @@ export default function AdminTools() {
                 htmlFor="import-excel"
                 className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 cursor-pointer"
               >
-                <Upload className="w-4 h-4" />
-                Import from Excel
+                <Upload className={`w-4 h-4 ${isRtl ? 'ml-2' : 'mr-2'}`} />
+                {t.importExcel}
               </label>
             </div>
           </div>
@@ -364,50 +421,71 @@ export default function AdminTools() {
       </div>
 
       {/* Audit Log */}
-      <div className="bg-white p-6 rounded-xl shadow-sm">
-        <div className="flex justify-between items-center mb-6">
+      <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div className="flex items-center gap-2">
-            <History className="w-6 h-6 text-purple-600" />
-            <h2 className="text-xl font-bold text-gray-900">Audit Log (Audit Trail)</h2>
+            <History className={`w-5 h-5 md:w-6 md:h-6 text-purple-600 ${isRtl ? 'ml-2' : 'mr-2'}`} />
+            <h2 className="text-lg md:text-xl font-bold text-gray-900">{t.auditLog}</h2>
           </div>
-          <button
-            onClick={async () => {
-              if (window.confirm('Are you sure you want to clear all audit logs?')) await clearAuditLogs();
-            }}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 bg-red-50 rounded-lg hover:bg-red-100"
-          >
-            <Trash2 className="w-4 h-4" />
-            Clear Logs
-          </button>
+          <div className="flex gap-2">
+            {showClearConfirm ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-red-600 font-medium">{t.areYouSure}</span>
+                <button
+                  onClick={async () => {
+                    await clearAuditLogs();
+                    setShowClearConfirm(false);
+                  }}
+                  className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                >
+                  {t.yesClear}
+                </button>
+                <button
+                  onClick={() => setShowClearConfirm(false)}
+                  className="px-3 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                >
+                  {t.cancel}
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowClearConfirm(true)}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 bg-red-50 rounded-lg hover:bg-red-100"
+              >
+                <Trash2 className={`w-4 h-4 ${isRtl ? 'ml-2' : 'mr-2'}`} />
+                {t.clearLogs}
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto scrollbar-thin">
           <table className={`min-w-full divide-y divide-gray-200 ${isRtl ? 'text-right' : 'text-left'}`}>
             <thead className="bg-gray-50">
               <tr>
-                <th className={`px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-xs font-medium text-gray-500 uppercase`}>Time</th>
-                <th className={`px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-xs font-medium text-gray-500 uppercase`}>User</th>
-                <th className={`px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-xs font-medium text-gray-500 uppercase`}>Action</th>
-                <th className={`px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-xs font-medium text-gray-500 uppercase`}>Entity</th>
-                <th className={`px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-xs font-medium text-gray-500 uppercase`}>Details</th>
+                <th className={`px-4 md:px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-wider`}>{t.time}</th>
+                <th className={`px-4 md:px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-wider`}>{t.user}</th>
+                <th className={`px-4 md:px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-wider`}>{t.action}</th>
+                <th className={`px-4 md:px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-wider`}>{t.entity}</th>
+                <th className={`px-4 md:px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-wider`}>{t.details}</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {auditLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
-                    No audit logs available
+                  <td colSpan={5} className="px-6 py-12 text-center text-gray-400 italic text-sm">
+                    {t.noAuditLogs}
                   </td>
                 </tr>
               ) : (
                 auditLogs.map((log) => (
-                  <tr key={log.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <tr key={log.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-[11px] md:text-xs text-gray-500">
                       {format(new Date(log.timestamp), 'yyyy-MM-dd HH:mm:ss')}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{log.user}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                    <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm font-semibold text-gray-900">{log.user}</td>
+                    <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs">
+                      <span className={`px-2 py-0.5 inline-flex text-[10px] md:text-xs leading-5 font-bold rounded-full 
                         ${log.action === 'ADD' ? 'bg-green-100 text-green-800' : 
                           log.action === 'DELETE' ? 'bg-red-100 text-red-800' : 
                           log.action === 'EDIT' || log.action === 'UPDATE' ? 'bg-blue-100 text-blue-800' : 
@@ -415,8 +493,8 @@ export default function AdminTools() {
                         {log.action}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{log.entity}</td>
-                    <td className="px-6 py-4 text-sm text-gray-900">{log.details}</td>
+                    <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs text-gray-500">{log.entity}</td>
+                    <td className="px-4 md:px-6 py-3 md:py-4 text-xs md:text-sm text-gray-700">{log.details}</td>
                   </tr>
                 ))
               )}

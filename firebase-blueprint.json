@@ -1,0 +1,193 @@
+{
+  "entities": {
+    "Donation": {
+      "title": "Donation",
+      "description": "A record of a donation made to the masjid or madrassa.",
+      "type": "object",
+      "properties": {
+        "donorName": { "type": "string", "description": "The name of the donor." },
+        "amount": { "type": "number", "description": "The amount donated." },
+        "date": { "type": "string", "format": "date", "description": "The date of the donation." },
+        "percentage": { "type": "number", "description": "The percentage for collector share." },
+        "collectorShare": { "type": "number", "description": "The calculated collector share." },
+        "netAmount": { "type": "number", "description": "The net amount after collector share." }
+      },
+      "required": ["donorName", "amount", "date", "percentage"]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "A record of an expense incurred by the masjid or madrassa.",
+      "type": "object",
+      "properties": {
+        "description": { "type": "string", "description": "A description of the expense." },
+        "amount": { "type": "number", "description": "The amount of the expense." },
+        "date": { "type": "string", "format": "date", "description": "The date of the expense." }
+      },
+      "required": ["description", "amount", "date"]
+    },
+    "User": {
+      "title": "User",
+      "description": "A system user with specific roles and permissions.",
+      "type": "object",
+      "properties": {
+        "username": { "type": "string", "description": "The username for login." },
+        "pin": { "type": "string", "description": "The PIN for login." },
+        "role": { "type": "string", "description": "The role of the user (e.g., Admin, Manager)." },
+        "permissions": { "type": "array", "items": { "type": "string" }, "description": "A list of permissions granted to the user." }
+      },
+      "required": ["username", "pin", "role", "permissions"]
+    },
+    "Patient": {
+      "title": "Patient",
+      "description": "A record of a patient registered at the dialysis center.",
+      "type": "object",
+      "properties": {
+        "mrd": { "type": "string" },
+        "name": { "type": "string" },
+        "age": { "type": "number" },
+        "gender": { "type": "string" },
+        "bloodGroup": { "type": "string" },
+        "phone": { "type": "string" },
+        "address": { "type": "string" },
+        "emergencyContact": { "type": "string" },
+        "height": { "type": "number" },
+        "dryWeight": { "type": "number" },
+        "diagnosis": { "type": "string" },
+        "comorbidities": { "type": "array", "items": { "type": "string" } },
+        "vascularAccessType": { "type": "string", "enum": ["Fistula", "Graft", "Catheter"] },
+        "registrationDate": { "type": "string" },
+        "status": { "type": "string", "enum": ["Active", "Inactive", "Transferred", "Deceased"] },
+        "history": { "type": "string" }
+      },
+      "required": ["mrd", "name", "age", "gender", "phone", "status"]
+    },
+    "DialysisSession": {
+      "title": "DialysisSession",
+      "description": "A record of a single dialysis session.",
+      "type": "object",
+      "properties": {
+        "patientId": { "type": "string" },
+        "date": { "type": "string" },
+        "startTime": { "type": "string" },
+        "endTime": { "type": "string" },
+        "status": { "type": "string", "enum": ["Scheduled", "In-Progress", "Completed", "Cancelled", "No-Show"] },
+        "machineId": { "type": "string" },
+        "nurseId": { "type": "string" },
+        "doctorId": { "type": "string" },
+        "clinicalNotes": { "type": "string" }
+      },
+      "required": ["patientId", "date", "status", "machineId"]
+    },
+    "InventoryItem": {
+      "title": "InventoryItem",
+      "description": "An item in the dialysis center inventory.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "quantity": { "type": "number" },
+        "minThreshold": { "type": "number" },
+        "unit": { "type": "string" }
+      },
+      "required": ["name", "quantity", "minThreshold"]
+    },
+    "Invoice": {
+      "title": "Invoice",
+      "description": "A billing invoice for a patient.",
+      "type": "object",
+      "properties": {
+        "patientId": { "type": "string" },
+        "date": { "type": "string" },
+        "totalAmount": { "type": "number" },
+        "netAmount": { "type": "number" },
+        "status": { "type": "string", "enum": ["Unpaid", "Paid", "Partial"] }
+      },
+      "required": ["patientId", "date", "totalAmount", "status"]
+    },
+    "Doctor": {
+      "title": "Doctor",
+      "description": "A record of a doctor at the dialysis center.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "specialization": { "type": "string" },
+        "phone": { "type": "string" },
+        "timing": { "type": "string" }
+      },
+      "required": ["name", "specialization"]
+    },
+    "Machine": {
+      "title": "Machine",
+      "description": "A record of a dialysis machine.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "status": { "type": "string", "enum": ["Active", "Maintenance", "Broken"] },
+        "lastServiceDate": { "type": "string" },
+        "nextServiceDate": { "type": "string" }
+      },
+      "required": ["name", "status"]
+    },
+    "Staff": {
+      "title": "Staff",
+      "description": "A record of a staff member.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "phone": { "type": "string" },
+        "salary": { "type": "number" }
+      },
+      "required": ["name", "role"]
+    },
+    "LedgerEntry": {
+      "title": "LedgerEntry",
+      "description": "A financial entry in the dialysis or water filter ledger.",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string" },
+        "description": { "type": "string" },
+        "type": { "type": "string", "enum": ["Income", "Expense"] },
+        "amount": { "type": "number" },
+        "category": { "type": "string", "enum": ["Dialysis", "WaterFilter", "General"] }
+      },
+      "required": ["date", "description", "type", "amount", "category"]
+    },
+    "PaymentMethod": {
+      "title": "PaymentMethod",
+      "description": "A payment method for donations (e.g., Bank, JazzCash).",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "accountName": { "type": "string" },
+        "accountNumber": { "type": "string" },
+        "bankName": { "type": "string" },
+        "raastId": { "type": "string" },
+        "color": { "type": "string" },
+        "qrUrl": { "type": "string" }
+      },
+      "required": ["name", "accountName", "accountNumber", "color"]
+    }
+  },
+  "firestore": {
+    "/donations/{donationId}": { "schema": "Donation", "description": "Collection of donations." },
+    "/expenses/{expenseId}": { "schema": "Expense", "description": "Collection of expenses." },
+    "/users/{userId}": { "schema": "User", "description": "Collection of system users." },
+    "/config/settings": { "schema": "AppSettings", "description": "Global application settings document." },
+    "/auditLogs/{logId}": { "schema": "AuditLog", "description": "Audit logs for system actions." },
+    "/patients/{id}": { "schema": "Patient", "description": "Collection of patients." },
+    "/doctors/{id}": { "schema": "Doctor", "description": "Collection of doctors." },
+    "/machines/{id}": { "schema": "Machine", "description": "Collection of machines." },
+    "/staff/{id}": { "schema": "Staff", "description": "Collection of staff." },
+    "/ledger/{id}": { "schema": "LedgerEntry", "description": "Collection of ledger entries." },
+    "/paymentMethods/{id}": { "schema": "PaymentMethod", "description": "Collection of payment methods." },
+    "/sessions/{id}": { "schema": "DialysisSession", "description": "Collection of dialysis sessions." },
+    "/prescriptions/{id}": { "schema": "Prescription", "description": "Collection of prescriptions." },
+    "/shifts/{id}": { "schema": "Shift", "description": "Collection of shifts." },
+    "/schedule/{id}": { "schema": "ScheduleEntry", "description": "Collection of schedule entries." },
+    "/inventory/{id}": { "schema": "InventoryItem", "description": "Collection of inventory items." },
+    "/invoices/{id}": { "schema": "Invoice", "description": "Collection of invoices." },
+    "/insuranceClaims/{id}": { "schema": "InsuranceClaim", "description": "Collection of insurance claims." },
+    "/maintenanceLogs/{id}": { "schema": "MaintenanceLog", "description": "Collection of maintenance logs." }
+  }
+}

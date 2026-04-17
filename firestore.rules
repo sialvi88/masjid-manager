@@ -33,6 +33,62 @@ service cloud.firestore {
       allow create: if true;
       allow update, delete: if false;
     }
+
+    match /patients/{id} {
+      allow read, write: if true;
+    }
+
+    match /doctors/{id} {
+      allow read, write: if true;
+    }
+
+    match /machines/{id} {
+      allow read, write: if true;
+    }
+
+    match /staff/{id} {
+      allow read, write: if true;
+    }
+
+    match /ledger/{id} {
+      allow read, write: if true;
+    }
+
+    match /paymentMethods/{id} {
+      allow read, write: if true;
+    }
+
+    match /sessions/{id} {
+      allow read, write: if true;
+    }
+
+    match /prescriptions/{id} {
+      allow read, write: if true;
+    }
+
+    match /shifts/{id} {
+      allow read, write: if true;
+    }
+
+    match /schedule/{id} {
+      allow read, write: if true;
+    }
+
+    match /inventory/{id} {
+      allow read, write: if true;
+    }
+
+    match /invoices/{id} {
+      allow read, write: if true;
+    }
+
+    match /insuranceClaims/{id} {
+      allow read, write: if true;
+    }
+
+    match /maintenanceLogs/{id} {
+      allow read, write: if true;
+    }
     
     // Default deny
     match /{path=**} {

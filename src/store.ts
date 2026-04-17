@@ -74,6 +74,194 @@ export interface AppSettings {
   currency: string;
   dateFormat: string;
   defaultPercentage: number;
+  donorCategories?: string[];
+  news?: string[];
+  ticker?: {
+    speed: number;
+    fontSize: number;
+    bgColor: string;
+    textColor: string;
+  };
+}
+
+export interface Patient {
+  id: string;
+  mrd: string; // Medical Record Number
+  name: string;
+  age: number;
+  gender: string;
+  bloodGroup: string;
+  phone: string;
+  address: string;
+  emergencyContact: string;
+  height: number;
+  dryWeight: number; // Target post-dialysis weight
+  diagnosis: string;
+  comorbidities: string[]; // e.g., DM, HTN
+  vascularAccessType: 'Fistula' | 'Graft' | 'Catheter';
+  registrationDate: string;
+  status: 'Active' | 'Inactive' | 'Transferred' | 'Deceased';
+  history: string;
+  documents?: { name: string; url: string; date: string; }[];
+}
+
+export interface Vitals {
+  bpSystolic: number;
+  bpDiastolic: number;
+  pulse: number;
+  weight: number;
+  temp: number;
+  spo2: number;
+}
+
+export interface DialysisSession {
+  id: string;
+  patientId: string;
+  date: string;
+  startTime: string;
+  endTime?: string;
+  status: 'Scheduled' | 'In-Progress' | 'Completed' | 'Cancelled' | 'No-Show';
+  machineId: string;
+  nurseId: string;
+  doctorId: string;
+  
+  preVitals: Vitals;
+  intraVitals: {
+    timestamp: string;
+    bloodFlowRate: number;
+    dialysateFlow: number;
+    heparinDose: number;
+    ufGoal: number;
+    actualUfRemoved: number;
+    vitals: Partial<Vitals>;
+  }[];
+  postVitals?: Vitals;
+  
+  clinicalNotes: string;
+  complications?: string[];
+  ktV?: number;
+  urr?: number;
+  
+  consumablesUsed: { itemId: string; quantity: number; }[];
+}
+
+export interface Prescription {
+  id: string;
+  patientId: string;
+  doctorId: string;
+  date: string;
+  medication: string;
+  dose: string;
+  frequency: string;
+  route: string;
+  status: 'Active' | 'Discontinued';
+}
+
+export interface Shift {
+  id: string;
+  name: string; // Morning, Evening, Night
+  startTime: string;
+  endTime: string;
+}
+
+export interface ScheduleEntry {
+  id: string;
+  patientId: string;
+  shiftId: string;
+  dayOfWeek: number; // 0-6
+  machineId: string;
+  chairNumber: string;
+}
+
+export interface InventoryItem {
+  id: string;
+  name: string;
+  category: string;
+  quantity: number;
+  minThreshold: number;
+  unit: string;
+  expiryDate?: string;
+  batchNumber?: string;
+}
+
+export interface Invoice {
+  id: string;
+  patientId: string;
+  date: string;
+  items: { description: string; amount: number; }[];
+  totalAmount: number;
+  discount: number;
+  netAmount: number;
+  status: 'Unpaid' | 'Paid' | 'Partial';
+  insuranceClaimId?: string;
+}
+
+export interface InsuranceClaim {
+  id: string;
+  invoiceId: string;
+  tpaName: string;
+  policyNumber: string;
+  status: 'Submitted' | 'Approved' | 'Rejected' | 'Paid';
+  amountClaimed: number;
+  amountApproved?: number;
+}
+
+export interface Machine {
+  id: string;
+  name: string;
+  serialNumber: string;
+  model: string;
+  purchaseDate: string;
+  status: 'Available' | 'In Use' | 'Maintenance' | 'Broken';
+  lastServiceDate: string;
+  nextServiceDate: string;
+  runtimeHours: number;
+}
+
+export interface MaintenanceLog {
+  id: string;
+  machineId: string;
+  date: string;
+  technicianName: string;
+  description: string;
+  type: 'Preventive' | 'Repair';
+}
+
+export interface Doctor {
+  id: string;
+  name: string;
+  specialization: string;
+  phone: string;
+  email: string;
+  availability?: string;
+}
+
+export interface Staff {
+  id: string;
+  name: string;
+  role: string;
+  phone: string;
+  salary: number;
+}
+
+export interface LedgerEntry {
+  id: string;
+  date: string;
+  description: string;
+  type: 'Income' | 'Expense';
+  amount: number;
+  category: 'Dialysis' | 'WaterFilter' | 'General';
+}
+
+export interface PaymentMethod {
+  id: string;
+  name: string;
+  accountName: string;
+  accountNumber: string;
+  bankName?: string;
+  raastId?: string;
+  color: string;
+  qrUrl?: string;
 }
 
 interface AppState {
@@ -90,6 +278,22 @@ interface AppState {
   currentUser: User | null;
   loading: boolean;
   
+  // Dialysis State
+  patients: Patient[];
+  doctors: Doctor[];
+  machines: Machine[];
+  dialysisStaff: Staff[];
+  ledger: LedgerEntry[];
+  paymentMethods: PaymentMethod[];
+  sessions: DialysisSession[];
+  prescriptions: Prescription[];
+  shifts: Shift[];
+  schedule: ScheduleEntry[];
+  inventory: InventoryItem[];
+  invoices: Invoice[];
+  insuranceClaims: InsuranceClaim[];
+  maintenanceLogs: MaintenanceLog[];
+
   // Actions
   setLanguage: (lang: Language) => void;
   fetchDataFromFirebase: () => void;
@@ -111,6 +315,7 @@ interface AppState {
   duplicateDonation: (id: string) => Promise<void>;
   bulkDeleteDonations: (ids: string[]) => Promise<void>;
   bulkUpdateDonations: (ids: string[], updates: Partial<Donation>) => Promise<void>;
+  loadAllDonations: () => void;
   
   addExpense: (expense: Omit<Expense, 'id'>) => Promise<void>;
   updateExpense: (id: string, updates: Partial<Expense>) => Promise<void>;
@@ -118,13 +323,64 @@ interface AppState {
   undoDeleteExpense: () => Promise<void>;
   bulkDeleteExpenses: (ids: string[]) => Promise<void>;
   bulkUpdateExpenses: (ids: string[], updates: Partial<Expense>) => Promise<void>;
+  loadAllExpenses: () => void;
 
   addAuditLog: (log: Omit<AuditLog, 'id' | 'timestamp'>) => Promise<void>;
   importData: (data: Partial<AppState>, merge: boolean) => Promise<void>;
   clearAuditLogs: () => Promise<void>;
+
+  // Dialysis/Water Actions
+  addPatient: (patient: Omit<Patient, 'id'>) => Promise<void>;
+  updatePatient: (id: string, updates: Partial<Patient>) => Promise<void>;
+  deletePatient: (id: string) => Promise<void>;
+
+  addDoctor: (doctor: Omit<Doctor, 'id'>) => Promise<void>;
+  updateDoctor: (id: string, updates: Partial<Doctor>) => Promise<void>;
+  deleteDoctor: (id: string) => Promise<void>;
+
+  addMachine: (machine: Omit<Machine, 'id'>) => Promise<void>;
+  updateMachine: (id: string, updates: Partial<Machine>) => Promise<void>;
+  deleteMachine: (id: string) => Promise<void>;
+
+  addStaff: (staff: Omit<Staff, 'id'>) => Promise<void>;
+  updateStaff: (id: string, updates: Partial<Staff>) => Promise<void>;
+  deleteStaff: (id: string) => Promise<void>;
+
+  addLedgerEntry: (entry: Omit<LedgerEntry, 'id'>) => Promise<void>;
+  updatePaymentMethod: (id: string, updates: Partial<PaymentMethod>) => Promise<void>;
+
+  addSession: (session: Omit<DialysisSession, 'id'>) => Promise<void>;
+  updateSession: (id: string, updates: Partial<DialysisSession>) => Promise<void>;
+  deleteSession: (id: string) => Promise<void>;
+
+  addPrescription: (prescription: Omit<Prescription, 'id'>) => Promise<void>;
+  updatePrescription: (id: string, updates: Partial<Prescription>) => Promise<void>;
+  deletePrescription: (id: string) => Promise<void>;
+
+  addInventoryItem: (item: Omit<InventoryItem, 'id'>) => Promise<void>;
+  updateInventoryItem: (id: string, updates: Partial<InventoryItem>) => Promise<void>;
+  deleteInventoryItem: (id: string) => Promise<void>;
+
+  addInvoice: (invoice: Omit<Invoice, 'id'>) => Promise<void>;
+  updateInvoice: (id: string, updates: Partial<Invoice>) => Promise<void>;
+  deleteInvoice: (id: string) => Promise<void>;
+
+  addInsuranceClaim: (claim: Omit<InsuranceClaim, 'id'>) => Promise<void>;
+  updateInsuranceClaim: (id: string, updates: Partial<InsuranceClaim>) => Promise<void>;
+
+  addMaintenanceLog: (log: Omit<MaintenanceLog, 'id'>) => Promise<void>;
+  addShift: (shift: Omit<Shift, 'id'>) => Promise<void>;
+  updateShift: (id: string, updates: Partial<Shift>) => Promise<void>;
+  deleteShift: (id: string) => Promise<void>;
+
+  addScheduleEntry: (entry: Omit<ScheduleEntry, 'id'>) => Promise<void>;
+  updateScheduleEntry: (id: string, updates: Partial<ScheduleEntry>) => Promise<void>;
+  deleteScheduleEntry: (id: string) => Promise<void>;
 }
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
+
+import { handleFirestoreError, OperationType } from './lib/firebaseUtils';
 
 export const useStore = create<AppState>()(
   persist(
@@ -140,6 +396,20 @@ export const useStore = create<AppState>()(
       users: [],
       currentUser: null,
       loading: false,
+      patients: [],
+      doctors: [],
+      machines: [],
+      dialysisStaff: [],
+      ledger: [],
+      paymentMethods: [],
+      sessions: [],
+      prescriptions: [],
+      shifts: [],
+      schedule: [],
+      inventory: [],
+      invoices: [],
+      insuranceClaims: [],
+      maintenanceLogs: [],
       settings: {
         masjidName: 'جامع مسجد',
         madrisaName: 'مدرسہ اسلامیہ',
@@ -147,6 +417,19 @@ export const useStore = create<AppState>()(
         currency: 'Rs',
         dateFormat: 'DD-MM-YYYY',
         defaultPercentage: 10,
+        donorCategories: [],
+        news: [
+          "جمعہ کی نماز دوپہر 2:00 بجے ادا کی جائے گی۔",
+          "مسجد کے لیے سولر سسٹم کی تنصیب کے لیے 16 لاکھ روپے درکار ہیں۔ براہ کرم تعاون کریں۔",
+          "آپ کا 1 روپیہ بھی کسی کی زندگی بدل سکتا ہے۔ آج ہی عطیہ دیں۔",
+          "صدقہ بلاؤں کو ٹالتا ہے۔ صرف 5 روپے دے کر صدقہ جاریہ میں حصہ لیں۔"
+        ],
+        ticker: {
+          speed: 30,
+          fontSize: 18,
+          bgColor: "#b91c1c",
+          textColor: "#ffffff"
+        }
       },
 
       setLanguage: (lang) => set({ language: lang }),
@@ -157,19 +440,19 @@ export const useStore = create<AppState>()(
         console.log("Setting up Firestore listeners...");
 
         // Listen for donations
-        onSnapshot(query(collection(db, 'donations'), orderBy('date', 'desc')), (snapshot) => {
+        onSnapshot(query(collection(db, 'donations'), orderBy('date', 'desc'), limit(100)), (snapshot) => {
           const donations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Donation));
           set({ donations });
         }, (error) => {
-          console.error("Donations snapshot error:", error);
+          handleFirestoreError(error, OperationType.GET, 'donations');
         });
 
         // Listen for expenses
-        onSnapshot(query(collection(db, 'expenses'), orderBy('date', 'desc')), (snapshot) => {
+        onSnapshot(query(collection(db, 'expenses'), orderBy('date', 'desc'), limit(100)), (snapshot) => {
           const expenses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Expense));
           set({ expenses });
         }, (error) => {
-          console.error("Expenses snapshot error:", error);
+          handleFirestoreError(error, OperationType.GET, 'expenses');
         });
 
         // Listen for users
@@ -188,19 +471,31 @@ export const useStore = create<AppState>()(
           }
           set({ users });
         }, (error) => {
-          console.error("Users snapshot error:", error);
+          handleFirestoreError(error, OperationType.GET, 'users');
         });
 
         // Listen for settings
         onSnapshot(doc(db, 'config', 'settings'), (snapshot) => {
           if (snapshot.exists()) {
-            set({ settings: snapshot.data() as AppSettings });
+            const fetchedSettings = snapshot.data() as AppSettings;
+            const defaultSettings = get().settings;
+            // Merge defaults for new fields that might not exist in old Firebase documents
+            set({ 
+              settings: {
+                ...defaultSettings,
+                ...fetchedSettings,
+                ticker: {
+                  ...defaultSettings.ticker,
+                  ...(fetchedSettings.ticker || {})
+                }
+              } 
+            });
           } else {
             // Bootstrap settings
             setDoc(doc(db, 'config', 'settings'), get().settings);
           }
         }, (error) => {
-          console.error("Settings snapshot error:", error);
+          handleFirestoreError(error, OperationType.GET, 'config/settings');
         });
 
         // Listen for audit logs
@@ -208,10 +503,38 @@ export const useStore = create<AppState>()(
           const auditLogs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AuditLog));
           set({ auditLogs });
         }, (error) => {
-          console.error("AuditLogs snapshot error:", error);
+          handleFirestoreError(error, OperationType.GET, 'auditLogs');
         });
 
+        // Listen for Dialysis/Water data
+        onSnapshot(collection(db, 'patients'), (s) => set({ patients: s.docs.map(d => ({ id: d.id, ...d.data() } as Patient)) }), (e) => handleFirestoreError(e, OperationType.GET, 'patients'));
+        onSnapshot(collection(db, 'doctors'), (s) => set({ doctors: s.docs.map(d => ({ id: d.id, ...d.data() } as Doctor)) }), (e) => handleFirestoreError(e, OperationType.GET, 'doctors'));
+        onSnapshot(collection(db, 'machines'), (s) => set({ machines: s.docs.map(d => ({ id: d.id, ...d.data() } as Machine)) }), (e) => handleFirestoreError(e, OperationType.GET, 'machines'));
+        onSnapshot(collection(db, 'staff'), (s) => set({ dialysisStaff: s.docs.map(d => ({ id: d.id, ...d.data() } as Staff)) }), (e) => handleFirestoreError(e, OperationType.GET, 'staff'));
+        onSnapshot(collection(db, 'ledger'), (s) => set({ ledger: s.docs.map(d => ({ id: d.id, ...d.data() } as LedgerEntry)) }), (e) => handleFirestoreError(e, OperationType.GET, 'ledger'));
+        onSnapshot(collection(db, 'paymentMethods'), (s) => set({ paymentMethods: s.docs.map(d => ({ id: d.id, ...d.data() } as PaymentMethod)) }), (e) => handleFirestoreError(e, OperationType.GET, 'paymentMethods'));
+        onSnapshot(collection(db, 'sessions'), (s) => set({ sessions: s.docs.map(d => ({ id: d.id, ...d.data() } as DialysisSession)) }), (e) => handleFirestoreError(e, OperationType.GET, 'sessions'));
+        onSnapshot(collection(db, 'prescriptions'), (s) => set({ prescriptions: s.docs.map(d => ({ id: d.id, ...d.data() } as Prescription)) }), (e) => handleFirestoreError(e, OperationType.GET, 'prescriptions'));
+        onSnapshot(collection(db, 'shifts'), (s) => set({ shifts: s.docs.map(d => ({ id: d.id, ...d.data() } as Shift)) }), (e) => handleFirestoreError(e, OperationType.GET, 'shifts'));
+        onSnapshot(collection(db, 'schedule'), (s) => set({ schedule: s.docs.map(d => ({ id: d.id, ...d.data() } as ScheduleEntry)) }), (e) => handleFirestoreError(e, OperationType.GET, 'schedule'));
+        onSnapshot(collection(db, 'inventory'), (s) => set({ inventory: s.docs.map(d => ({ id: d.id, ...d.data() } as InventoryItem)) }), (e) => handleFirestoreError(e, OperationType.GET, 'inventory'));
+        onSnapshot(collection(db, 'invoices'), (s) => set({ invoices: s.docs.map(d => ({ id: d.id, ...d.data() } as Invoice)) }), (e) => handleFirestoreError(e, OperationType.GET, 'invoices'));
+        onSnapshot(collection(db, 'insuranceClaims'), (s) => set({ insuranceClaims: s.docs.map(d => ({ id: d.id, ...d.data() } as InsuranceClaim)) }), (e) => handleFirestoreError(e, OperationType.GET, 'insuranceClaims'));
+        onSnapshot(collection(db, 'maintenanceLogs'), (s) => set({ maintenanceLogs: s.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog)) }), (e) => handleFirestoreError(e, OperationType.GET, 'maintenanceLogs'));
+
         set({ loading: false });
+      },
+      loadAllDonations: () => {
+        onSnapshot(query(collection(db, 'donations'), orderBy('date', 'desc')), (snapshot) => {
+          const donations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Donation));
+          set({ donations });
+        }, (e) => handleFirestoreError(e, OperationType.GET, 'donations'));
+      },
+      loadAllExpenses: () => {
+        onSnapshot(query(collection(db, 'expenses'), orderBy('date', 'desc')), (snapshot) => {
+          const expenses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Expense));
+          set({ expenses });
+        }, (e) => handleFirestoreError(e, OperationType.GET, 'expenses'));
       },
 
       login: (username, pin) => {
@@ -237,32 +560,52 @@ export const useStore = create<AppState>()(
       changePassword: async (newPassword) => {
         const state = get();
         if (state.currentUser && state.currentUser.username === 'admin') {
-          await updateDoc(doc(db, 'users', state.currentUser.id), { pin: newPassword });
-          set({ adminPassword: newPassword });
+          try {
+            await updateDoc(doc(db, 'users', state.currentUser.id), { pin: newPassword });
+            set({ adminPassword: newPassword });
+          } catch (e) {
+            handleFirestoreError(e, OperationType.WRITE, `users/${state.currentUser.id}`);
+          }
         }
         get().addAuditLog({ action: 'UPDATE', entity: 'SYSTEM', details: 'Admin password changed', user: get().currentUser?.username || 'Admin' });
       },
       updateSettings: async (newSettings) => {
         const updatedSettings = { ...get().settings, ...newSettings };
-        await setDoc(doc(db, 'config', 'settings'), updatedSettings);
+        try {
+          await setDoc(doc(db, 'config', 'settings'), updatedSettings);
+        } catch (e) {
+          handleFirestoreError(e, OperationType.WRITE, 'config/settings');
+        }
         get().addAuditLog({ action: 'UPDATE', entity: 'SETTINGS', details: 'Application settings updated', user: get().currentUser?.username || 'Admin' });
       },
 
       addUser: async (userData) => {
         const id = generateId();
         const newUser: User = { ...userData, id };
-        await setDoc(doc(db, 'users', id), newUser);
+        try {
+          await setDoc(doc(db, 'users', id), newUser);
+        } catch (e) {
+          handleFirestoreError(e, OperationType.WRITE, `users/${id}`);
+        }
         get().addAuditLog({ action: 'ADD', entity: 'USER', details: `Created user ${userData.username} (${userData.role})`, user: get().currentUser?.username || 'Admin' });
       },
       
       updateUser: async (id, updates) => {
-        await updateDoc(doc(db, 'users', id), updates);
+        try {
+          await updateDoc(doc(db, 'users', id), updates);
+        } catch (e) {
+          handleFirestoreError(e, OperationType.WRITE, `users/${id}`);
+        }
         get().addAuditLog({ action: 'EDIT', entity: 'USER', details: `Updated user ${updates.username || id}`, user: get().currentUser?.username || 'Admin' });
       },
       
       deleteUser: async (id) => {
         const userToDelete = get().users.find(u => u.id === id);
-        await deleteDoc(doc(db, 'users', id));
+        try {
+          await deleteDoc(doc(db, 'users', id));
+        } catch (e) {
+          handleFirestoreError(e, OperationType.DELETE, `users/${id}`);
+        }
         get().addAuditLog({ action: 'DELETE', entity: 'USER', details: `Deleted user ${userToDelete?.username || id}`, user: get().currentUser?.username || 'Admin' });
       },
 
@@ -306,7 +649,11 @@ export const useStore = create<AppState>()(
             details: 'Donation record created.'
           }]
         };
-        await addDoc(collection(db, 'donations'), newDonation);
+        try {
+          await addDoc(collection(db, 'donations'), newDonation);
+        } catch (e) {
+          handleFirestoreError(e, OperationType.WRITE, 'donations');
+        }
         get().addAuditLog({ action: 'ADD', entity: 'DONATION', details: `Added donation for ${donationData.donorName} (${donationData.amount})`, user: get().currentUser?.username || 'Unknown' });
       },
 
@@ -320,25 +667,33 @@ export const useStore = create<AppState>()(
         
         const changes = Object.keys(updates).map(k => `${k} changed`).join(', ');
 
-        await updateDoc(doc(db, 'donations', id), {
-          ...updates,
-          collectorShare,
-          netAmount: updatedAmount - collectorShare,
-          history: [
-            ...d.history,
-            {
-              timestamp: new Date().toISOString(),
-              action: 'Updated',
-              details: `Updated by ${adminName}: ${changes}`
-            }
-          ]
-        });
+        try {
+          await updateDoc(doc(db, 'donations', id), {
+            ...updates,
+            collectorShare,
+            netAmount: updatedAmount - collectorShare,
+            history: [
+              ...d.history,
+              {
+                timestamp: new Date().toISOString(),
+                action: 'Updated',
+                details: `Updated by ${adminName}: ${changes}`
+              }
+            ]
+          });
+        } catch (e) {
+          handleFirestoreError(e, OperationType.WRITE, `donations/${id}`);
+        }
         get().addAuditLog({ action: 'EDIT', entity: 'DONATION', details: `Updated donation ${id}`, user: get().currentUser?.username || 'Unknown' });
       },
 
       deleteDonation: async (id) => {
         const donation = get().donations.find(d => d.id === id);
-        await deleteDoc(doc(db, 'donations', id));
+        try {
+          await deleteDoc(doc(db, 'donations', id));
+        } catch (e) {
+          handleFirestoreError(e, OperationType.DELETE, `donations/${id}`);
+        }
         get().addAuditLog({ action: 'DELETE', entity: 'DONATION', details: `Deleted donation ${id} (${donation?.donorName})`, user: get().currentUser?.username || 'Unknown' });
       },
 
@@ -399,12 +754,20 @@ export const useStore = create<AppState>()(
       },
 
       addExpense: async (expenseData) => {
-        await addDoc(collection(db, 'expenses'), expenseData);
+        try {
+          await addDoc(collection(db, 'expenses'), expenseData);
+        } catch (e) {
+          handleFirestoreError(e, OperationType.WRITE, 'expenses');
+        }
         get().addAuditLog({ action: 'ADD', entity: 'EXPENSE', details: `Added expense: ${expenseData.description} (${expenseData.amount})`, user: get().currentUser?.username || 'Unknown' });
       },
 
       updateExpense: async (id, updates) => {
-        await updateDoc(doc(db, 'expenses', id), updates);
+        try {
+          await updateDoc(doc(db, 'expenses', id), updates);
+        } catch (e) {
+          handleFirestoreError(e, OperationType.WRITE, `expenses/${id}`);
+        }
         get().addAuditLog({ action: 'EDIT', entity: 'EXPENSE', details: `Updated expense ${id}`, user: get().currentUser?.username || 'Unknown' });
       },
 
@@ -412,8 +775,12 @@ export const useStore = create<AppState>()(
         const expense = get().expenses.find(e => e.id === id);
         if (!expense) return;
         
-        await deleteDoc(doc(db, 'expenses', id));
-        set((state) => ({ deletedExpenses: [...state.deletedExpenses, expense] }));
+        try {
+          await deleteDoc(doc(db, 'expenses', id));
+          set((state) => ({ deletedExpenses: [...state.deletedExpenses, expense] }));
+        } catch (e) {
+          handleFirestoreError(e, OperationType.DELETE, `expenses/${id}`);
+        }
         get().addAuditLog({ action: 'DELETE', entity: 'EXPENSE', details: `Deleted expense ${id} (${expense?.description})`, user: get().currentUser?.username || 'Unknown' });
       },
 
@@ -422,8 +789,12 @@ export const useStore = create<AppState>()(
         if (state.deletedExpenses.length === 0) return;
         const lastDeleted = state.deletedExpenses[state.deletedExpenses.length - 1];
         const { id: _, ...data } = lastDeleted;
-        await addDoc(collection(db, 'expenses'), data);
-        set({ deletedExpenses: state.deletedExpenses.slice(0, -1) });
+        try {
+          await addDoc(collection(db, 'expenses'), data);
+          set({ deletedExpenses: state.deletedExpenses.slice(0, -1) });
+        } catch (e) {
+          handleFirestoreError(e, OperationType.WRITE, 'expenses');
+        }
         get().addAuditLog({ action: 'RESTORE', entity: 'EXPENSE', details: `Restored expense (${lastDeleted.description})`, user: get().currentUser?.username || 'Unknown' });
       },
 
@@ -448,7 +819,11 @@ export const useStore = create<AppState>()(
           ...log,
           timestamp: new Date().toISOString()
         };
-        await addDoc(collection(db, 'auditLogs'), newLog);
+        try {
+          await addDoc(collection(db, 'auditLogs'), newLog);
+        } catch (e) {
+          handleFirestoreError(e, OperationType.WRITE, 'auditLogs');
+        }
       },
 
       importData: async (data, merge) => {
@@ -486,7 +861,157 @@ export const useStore = create<AppState>()(
         logs.forEach(l => batch.delete(doc(db, 'auditLogs', l.id)));
         await batch.commit();
         get().addAuditLog({ action: 'DELETE', entity: 'SYSTEM', details: 'Cleared audit logs', user: get().currentUser?.username || 'Unknown' });
-      }
+      },
+
+      addPatient: async (data) => { 
+        try { await addDoc(collection(db, 'patients'), data); }
+        catch (e) { handleFirestoreError(e, OperationType.WRITE, 'patients'); }
+      },
+      updatePatient: async (id, data) => { 
+        try { await updateDoc(doc(db, 'patients', id), data); }
+        catch (e) { handleFirestoreError(e, OperationType.WRITE, `patients/${id}`); }
+      },
+      deletePatient: async (id) => { 
+        try { await deleteDoc(doc(db, 'patients', id)); }
+        catch (e) { handleFirestoreError(e, OperationType.DELETE, `patients/${id}`); }
+      },
+
+      addDoctor: async (data) => { 
+        try { await addDoc(collection(db, 'doctors'), data); }
+        catch (e) { handleFirestoreError(e, OperationType.WRITE, 'doctors'); }
+      },
+      updateDoctor: async (id, data) => { 
+        try { await updateDoc(doc(db, 'doctors', id), data); }
+        catch (e) { handleFirestoreError(e, OperationType.WRITE, `doctors/${id}`); }
+      },
+      deleteDoctor: async (id) => { 
+        try { await deleteDoc(doc(db, 'doctors', id)); }
+        catch (e) { handleFirestoreError(e, OperationType.DELETE, `doctors/${id}`); }
+      },
+
+      addMachine: async (data) => { 
+        try { await addDoc(collection(db, 'machines'), data); }
+        catch (e) { handleFirestoreError(e, OperationType.WRITE, 'machines'); }
+      },
+      updateMachine: async (id, data) => { 
+        try { await updateDoc(doc(db, 'machines', id), data); }
+        catch (e) { handleFirestoreError(e, OperationType.WRITE, `machines/${id}`); }
+      },
+      deleteMachine: async (id) => { 
+        try { await deleteDoc(doc(db, 'machines', id)); }
+        catch (e) { handleFirestoreError(e, OperationType.DELETE, `machines/${id}`); }
+      },
+
+      addStaff: async (data) => { 
+        try { await addDoc(collection(db, 'staff'), data); }
+        catch (e) { handleFirestoreError(e, OperationType.WRITE, 'staff'); }
+      },
+      updateStaff: async (id, data) => { 
+        try { await updateDoc(doc(db, 'staff', id), data); }
+        catch (e) { handleFirestoreError(e, OperationType.WRITE, `staff/${id}`); }
+      },
+      deleteStaff: async (id) => { 
+        try { await deleteDoc(doc(db, 'staff', id)); }
+        catch (e) { handleFirestoreError(e, OperationType.DELETE, `staff/${id}`); }
+      },
+
+      addLedgerEntry: async (data) => { 
+        try { await addDoc(collection(db, 'ledger'), data); }
+        catch (e) { handleFirestoreError(e, OperationType.WRITE, 'ledger'); }
+      },
+
+      updatePaymentMethod: async (id, updates) => {
+        try {
+          await setDoc(doc(db, 'paymentMethods', id), updates, { merge: true });
+          get().addAuditLog({ action: 'UPDATE', entity: 'PAYMENT_METHOD', details: `Updated payment method ${id}`, user: get().currentUser?.username || 'Admin' });
+        } catch (e) {
+          handleFirestoreError(e, OperationType.WRITE, `paymentMethods/${id}`);
+        }
+      },
+      addSession: async (data) => { 
+        try { await addDoc(collection(db, 'sessions'), data); }
+        catch (e) { handleFirestoreError(e, OperationType.WRITE, 'sessions'); }
+      },
+      updateSession: async (id, data) => { 
+        try { await updateDoc(doc(db, 'sessions', id), data); }
+        catch (e) { handleFirestoreError(e, OperationType.WRITE, `sessions/${id}`); }
+      },
+      deleteSession: async (id) => { 
+        try { await deleteDoc(doc(db, 'sessions', id)); }
+        catch (e) { handleFirestoreError(e, OperationType.DELETE, `sessions/${id}`); }
+      },
+      addPrescription: async (data) => { 
+        try { await addDoc(collection(db, 'prescriptions'), data); }
+        catch (e) { handleFirestoreError(e, OperationType.WRITE, 'prescriptions'); }
+      },
+      updatePrescription: async (id, data) => { 
+        try { await updateDoc(doc(db, 'prescriptions', id), data); }
+        catch (e) { handleFirestoreError(e, OperationType.WRITE, `prescriptions/${id}`); }
+      },
+      deletePrescription: async (id) => { 
+        try { await deleteDoc(doc(db, 'prescriptions', id)); }
+        catch (e) { handleFirestoreError(e, OperationType.DELETE, `prescriptions/${id}`); }
+      },
+      addInventoryItem: async (data) => { 
+        try { await addDoc(collection(db, 'inventory'), data); }
+        catch (e) { handleFirestoreError(e, OperationType.WRITE, 'inventory'); }
+      },
+      updateInventoryItem: async (id, data) => { 
+        try { await updateDoc(doc(db, 'inventory', id), data); }
+        catch (e) { handleFirestoreError(e, OperationType.WRITE, `inventory/${id}`); }
+      },
+      deleteInventoryItem: async (id) => { 
+        try { await deleteDoc(doc(db, 'inventory', id)); }
+        catch (e) { handleFirestoreError(e, OperationType.DELETE, `inventory/${id}`); }
+      },
+      addInvoice: async (data) => { 
+        try { await addDoc(collection(db, 'invoices'), data); }
+        catch (e) { handleFirestoreError(e, OperationType.WRITE, 'invoices'); }
+      },
+      updateInvoice: async (id, data) => { 
+        try { await updateDoc(doc(db, 'invoices', id), data); }
+        catch (e) { handleFirestoreError(e, OperationType.WRITE, `invoices/${id}`); }
+      },
+      deleteInvoice: async (id) => { 
+        try { await deleteDoc(doc(db, 'invoices', id)); }
+        catch (e) { handleFirestoreError(e, OperationType.DELETE, `invoices/${id}`); }
+      },
+      addInsuranceClaim: async (data) => { 
+        try { await addDoc(collection(db, 'insuranceClaims'), data); }
+        catch (e) { handleFirestoreError(e, OperationType.WRITE, 'insuranceClaims'); }
+      },
+      updateInsuranceClaim: async (id, data) => { 
+        try { await updateDoc(doc(db, 'insuranceClaims', id), data); }
+        catch (e) { handleFirestoreError(e, OperationType.WRITE, `insuranceClaims/${id}`); }
+      },
+      addMaintenanceLog: async (data) => { 
+        try { await addDoc(collection(db, 'maintenanceLogs'), data); }
+        catch (e) { handleFirestoreError(e, OperationType.WRITE, 'maintenanceLogs'); }
+      },
+      addShift: async (data) => { 
+        try { await addDoc(collection(db, 'shifts'), data); }
+        catch (e) { handleFirestoreError(e, OperationType.WRITE, 'shifts'); }
+      },
+      updateShift: async (id, data) => { 
+        try { await updateDoc(doc(db, 'shifts', id), data); }
+        catch (e) { handleFirestoreError(e, OperationType.WRITE, `shifts/${id}`); }
+      },
+      deleteShift: async (id) => { 
+        try { await deleteDoc(doc(db, 'shifts', id)); }
+        catch (e) { handleFirestoreError(e, OperationType.DELETE, `shifts/${id}`); }
+      },
+      addScheduleEntry: async (data) => { 
+        try { await addDoc(collection(db, 'schedule'), data); }
+        catch (e) { handleFirestoreError(e, OperationType.WRITE, 'schedule'); }
+      },
+      updateScheduleEntry: async (id, data) => { 
+        try { await updateDoc(doc(db, 'schedule', id), data); }
+        catch (e) { handleFirestoreError(e, OperationType.WRITE, `schedule/${id}`); }
+      },
+      deleteScheduleEntry: async (id) => { 
+        try { await deleteDoc(doc(db, 'schedule', id)); }
+        catch (e) { handleFirestoreError(e, OperationType.DELETE, `schedule/${id}`); }
+      },
     }),
     {
       name: 'donation-app-storage',
