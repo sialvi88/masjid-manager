@@ -9,7 +9,7 @@ export default function Expenses() {
   const role = useStore(state => state.role);
   const currentUser = useStore(state => state.currentUser);
   const isAdmin = currentUser?.role === 'Admin';
-  const canManage = !!currentUser && (isAdmin || currentUser.permissions?.includes('manage_expenses'));
+  const canManage = !!currentUser && (isAdmin || (Array.isArray(currentUser.permissions) && currentUser.permissions.includes('manage_expenses')));
   const expenses = useStore(state => state.expenses);
   const deletedExpenses = useStore(state => state.deletedExpenses);
   const addExpense = useStore(state => state.addExpense);

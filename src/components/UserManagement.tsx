@@ -34,7 +34,7 @@ export default function UserManagement() {
         username: user.username,
         pin: user.pin,
         role: user.role,
-        permissions: [...user.permissions]
+        permissions: Array.isArray(user.permissions) ? [...user.permissions] : []
       });
     } else {
       setEditingUser(null);

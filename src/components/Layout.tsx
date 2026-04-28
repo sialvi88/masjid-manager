@@ -29,7 +29,7 @@ export default function Layout({ children, currentTab, setCurrentTab }: LayoutPr
     if (role === 'guest') return true; 
     if (!currentUser) return false;
     if (currentUser.role === 'Admin') return true;
-    return currentUser.permissions.includes(permission as any);
+    return Array.isArray(currentUser.permissions) && currentUser.permissions.includes(permission as any);
   };
 
   const navItems = [

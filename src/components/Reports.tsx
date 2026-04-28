@@ -89,7 +89,7 @@ export default function Reports() {
   const role = useStore(state => state.role);
   const currentUser = useStore(state => state.currentUser);
   const isAdmin = currentUser?.role === 'Admin';
-  const canManageDonations = !!currentUser && (isAdmin || currentUser.permissions?.includes('manage_donations'));
+  const canManageDonations = !!currentUser && (isAdmin || (Array.isArray(currentUser.permissions) && currentUser.permissions.includes('manage_donations')));
   const donations = useStore(state => state.donations);
   const expenses = useStore(state => state.expenses);
   const loadAllDonations = useStore(state => state.loadAllDonations);

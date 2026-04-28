@@ -15,7 +15,7 @@ export default function Donations() {
   const currentUser = useStore(state => state.currentUser);
   const donations = useStore(state => state.donations);
   const isAdmin = currentUser?.role === 'Admin';
-  const canManage = !!currentUser && (isAdmin || currentUser.permissions?.includes('manage_donations'));
+  const canManage = !!currentUser && (isAdmin || (Array.isArray(currentUser.permissions) && currentUser.permissions.includes('manage_donations')));
   const globalPercentage = useStore(state => state.globalPercentage);
   const setGlobalPercentage = useStore(state => state.setGlobalPercentage);
   const addDonation = useStore(state => state.addDonation);
