@@ -1,7 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { useStore, defaultLogoUrl, Permission } from '../store';
+import { db } from '../firebase';
+import { collection, getDocs } from 'firebase/firestore';
 import { format } from 'date-fns';
-import { Download, Upload, Database, History, FileSpreadsheet, FileText, Trash2, Settings, Save, Image as ImageIcon } from 'lucide-react';
+import { Download, Upload, Database, History, FileSpreadsheet, FileText, Trash2, Settings, Save, Image as ImageIcon, RefreshCw, AlertCircle } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { translations } from '../translations';
 import UserManagement from './UserManagement';
@@ -19,8 +21,28 @@ export default function AdminTools() {
   // Settings State
   const [localSettings, setLocalSettings] = useState(settings);
   const [newCategory, setNewCategory] = useState('');
+  const [newExpenseCategory, setNewExpenseCategory] = useState('');
 
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [cleanupResult, setCleanupResult] = useState<{ donationsRemoved: number, expensesRemoved: number } | null>(null);
+  const [isCleaning, setIsCleaning] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+  const handleCleanup = async () => {
+    setIsCleaning(true);
+    const result = await store.cleanupDuplicates();
+    setCleanupResult(result);
+    setIsCleaning(false);
+    setTimeout(() => setCleanupResult(null), 5000);
+  };
+
+  const handleFactoryReset = async () => {
+    setIsCleaning(true);
+    await store.wipeAllData();
+    setIsCleaning(false);
+    setShowResetConfirm(false);
+    alert(t.systemResetSuccess);
+  };
 
   const handleSaveSettings = async () => {
     await updateSettings(localSettings);
@@ -44,6 +66,23 @@ export default function AdminTools() {
     });
   };
 
+  const handleAddExpenseCategory = () => {
+    if (newExpenseCategory.trim() && !localSettings.expenseCategories?.includes(newExpenseCategory.trim())) {
+      setLocalSettings({
+        ...localSettings,
+        expenseCategories: [...(localSettings.expenseCategories || []), newExpenseCategory.trim()]
+      });
+      setNewExpenseCategory('');
+    }
+  };
+
+  const handleRemoveExpenseCategory = (catToRemove: string) => {
+    setLocalSettings({
+      ...localSettings,
+      expenseCategories: (localSettings.expenseCategories || []).filter(cat => cat !== catToRemove)
+    });
+  };
+
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -59,24 +98,44 @@ export default function AdminTools() {
     setLocalSettings({ ...localSettings, logoUrl: defaultLogoUrl });
   };
 
-  const handleBackup = () => {
+  const handleBackup = async () => {
+    // Fetch latest users if possible
+    const usersSnapshot = await getDocs(collection(db, 'users'));
+    const users = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
     const data = {
       donations: store.donations,
       expenses: store.expenses,
+      patients: store.patients,
+      doctors: store.doctors,
+      machines: store.machines,
+      dialysisStaff: store.dialysisStaff,
+      ledger: store.ledger,
+      paymentMethods: store.paymentMethods,
+      sessions: store.sessions,
+      prescriptions: store.prescriptions,
+      shifts: store.shifts,
+      schedule: store.schedule,
+      inventory: store.inventory,
+      invoices: store.invoices,
+      insuranceClaims: store.insuranceClaims,
+      maintenanceLogs: store.maintenanceLogs,
+      settings: store.settings,
+      users: users,
       globalPercentage: store.globalPercentage,
-      version: '1.0',
+      version: '1.2',
       exportDate: new Date().toISOString()
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `backup_${format(new Date(), 'yyyy-MM-dd_HH-mm')}.json`;
+    a.download = `full_backup_${format(new Date(), 'yyyy-MM-dd_HH-mm')}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    store.addAuditLog({ action: 'BACKUP', entity: 'SYSTEM', details: 'Downloaded full JSON backup', user: 'Admin' });
+    store.addAuditLog({ action: 'BACKUP', entity: 'SYSTEM', details: 'Downloaded comprehensive app backup', user: 'Admin' });
   };
 
   const handleRestore = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -235,7 +294,7 @@ export default function AdminTools() {
                   {t.add}
                 </button>
               </div>
-              <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-2 bg-gray-50 rounded-md border border-gray-100">
+              <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-2 bg-gray-50 rounded-md border border-gray-100 mb-4">
                 {(localSettings.donorCategories || []).length === 0 ? (
                    <span className="text-sm text-gray-500 italic">{t.noCategoriesFound}</span>
                 ) : (
@@ -244,6 +303,41 @@ export default function AdminTools() {
                       <span className="text-gray-700">{cat}</span>
                       <button 
                         onClick={() => handleRemoveCategory(cat)}
+                        className="text-red-500 hover:text-red-700 ml-1"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t.expenseCategories}</label>
+              <div className="flex gap-2 mb-3">
+                <input 
+                  type="text" 
+                  value={newExpenseCategory}
+                  onChange={(e) => setNewExpenseCategory(e.target.value)}
+                  placeholder={t.newExpenseCategory + "..."}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddExpenseCategory()}
+                />
+                <button 
+                  onClick={handleAddExpenseCategory}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+                >
+                  {t.add}
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-2 bg-gray-50 rounded-md border border-gray-100">
+                {(localSettings.expenseCategories || []).length === 0 ? (
+                   <span className="text-sm text-gray-500 italic">{t.noCategoriesFound}</span>
+                ) : (
+                  (localSettings.expenseCategories || []).map((cat, idx) => (
+                    <div key={idx} className="flex items-center gap-1 bg-white border border-gray-200 px-2 py-1 rounded-md text-sm shadow-sm">
+                      <span className="text-gray-700">{cat}</span>
+                      <button 
+                        onClick={() => handleRemoveExpenseCategory(cat)}
                         className="text-red-500 hover:text-red-700 ml-1"
                       >
                         <Trash2 className="w-3 h-3" />
@@ -415,6 +509,88 @@ export default function AdminTools() {
                 {t.importExcel}
               </label>
             </div>
+          </div>
+        </div>
+
+        {/* Data Cleanup */}
+        <div className="bg-white p-6 rounded-xl shadow-sm space-y-4">
+          <div className="flex items-center gap-2 mb-4">
+            <RefreshCw className={`w-6 h-6 text-orange-600 ${isRtl ? 'ml-2' : 'mr-2'} ${isCleaning ? 'animate-spin' : ''}`} />
+            <h2 className="text-xl font-bold text-gray-900">{t.dataCleanup}</h2>
+          </div>
+          
+          <div className="space-y-3">
+            <p className="text-xs text-gray-500 italic mb-2">
+              {isRtl 
+                ? 'یہ ٹول تمام ڈونیشنز اور اخراجات کو چیک کرے گا اور ایک جیسی انٹریز کو خود بخود ختم کر دے گا۔'
+                : 'This tool will check all records and automatically remove identical duplicates.'}
+            </p>
+            <button
+              onClick={handleCleanup}
+              disabled={isCleaning}
+              className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                isCleaning ? 'bg-orange-200 cursor-not-allowed' : 'bg-orange-600 hover:bg-orange-700 text-white'
+              }`}
+            >
+              <Trash2 className={`w-4 h-4 ${isRtl ? 'ml-2' : 'mr-2'}`} />
+              {isCleaning ? (isRtl ? 'صفائی جاری ہے...' : 'Cleaning...') : t.removeDuplicates}
+            </button>
+            
+            {cleanupResult && (
+              <div className="mt-3 p-3 bg-green-50 rounded-lg border border-green-100 text-xs text-green-700 font-bold">
+                {t.duplicatesRemoved} {cleanupResult.donationsRemoved + cleanupResult.expensesRemoved}
+                <div className="mt-1 font-normal opacity-80">
+                   - {t.donations}: {cleanupResult.donationsRemoved}
+                   <br />
+                   - {t.expenses}: {cleanupResult.expensesRemoved}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Reset System */}
+        <div className="bg-white p-6 rounded-xl shadow-sm border-2 border-red-50">
+          <div className="flex items-center gap-2 mb-4">
+            <AlertCircle className={`w-6 h-6 text-red-600 ${isRtl ? 'ml-2' : 'mr-2'}`} />
+            <h2 className="text-xl font-bold text-red-600">{t.resetSystem}</h2>
+          </div>
+          
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              {isRtl 
+                ? 'احتیاط: فیکٹری ری سیٹ کرنے سے تمام ڈونیشنز، اخراجات اور ہسٹری مستقل طور پر ختم ہو جائے گی۔'
+                : 'Warning: Factory resetting will permanently delete all donations, expenses, and history.'}
+            </p>
+            
+            {showResetConfirm ? (
+              <div className="bg-red-50 p-4 rounded-lg space-y-3">
+                <p className="text-xs font-bold text-red-700">{t.resetConfirm}</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleFactoryReset}
+                    disabled={isCleaning}
+                    className="flex-1 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 font-bold text-sm"
+                  >
+                    {isCleaning ? '...' : t.yesClear}
+                  </button>
+                  <button
+                    onClick={() => setShowResetConfirm(false)}
+                    className="flex-1 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 font-bold text-sm"
+                  >
+                    {t.cancel}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowResetConfirm(true)}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-50 text-red-700 border border-red-200 rounded-lg hover:bg-red-100 transition-colors font-bold"
+              >
+                <Trash2 className="w-5 h-5" />
+                {t.resetSystem}
+              </button>
+            )}
           </div>
         </div>
 

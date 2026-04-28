@@ -65,6 +65,7 @@ export interface Expense {
   description: string;
   amount: number;
   date: string;
+  category?: string;
 }
 
 export interface AppSettings {
@@ -75,6 +76,7 @@ export interface AppSettings {
   dateFormat: string;
   defaultPercentage: number;
   donorCategories?: string[];
+  expenseCategories?: string[];
   news?: string[];
   ticker?: {
     speed: number;
@@ -376,6 +378,9 @@ interface AppState {
   addScheduleEntry: (entry: Omit<ScheduleEntry, 'id'>) => Promise<void>;
   updateScheduleEntry: (id: string, updates: Partial<ScheduleEntry>) => Promise<void>;
   deleteScheduleEntry: (id: string) => Promise<void>;
+  
+  cleanupDuplicates: () => Promise<{ donationsRemoved: number, expensesRemoved: number }>;
+  wipeAllData: () => Promise<void>;
 }
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
@@ -418,6 +423,7 @@ export const useStore = create<AppState>()(
         dateFormat: 'DD-MM-YYYY',
         defaultPercentage: 10,
         donorCategories: [],
+        expenseCategories: [],
         news: [
           "جمعہ کی نماز دوپہر 2:00 بجے ادا کی جائے گی۔",
           "مسجد کے لیے سولر سسٹم کی تنصیب کے لیے 16 لاکھ روپے درکار ہیں۔ براہ کرم تعاون کریں۔",
@@ -469,6 +475,16 @@ export const useStore = create<AppState>()(
             };
             setDoc(doc(db, 'users', '1'), adminUser);
           }
+          
+          // CRITICAL FIX: Sync currentUser with updated user data
+          const currentLoggedInUser = get().currentUser;
+          if (currentLoggedInUser) {
+            const updatedUser = users.find(u => u.id === currentLoggedInUser.id);
+            if (updatedUser) {
+              set({ currentUser: updatedUser });
+            }
+          }
+          
           set({ users });
         }, (error) => {
           handleFirestoreError(error, OperationType.GET, 'users');
@@ -827,32 +843,60 @@ export const useStore = create<AppState>()(
       },
 
       importData: async (data, merge) => {
-        const batch = writeBatch(db);
-        
+        // High-level batch function to stay under the 500 limit
+        const commitBatch = async (items: any[], type: string, action: 'set' | 'delete') => {
+          let count = 0;
+          while (count < items.length) {
+            const batch = writeBatch(db);
+            const chunk = items.slice(count, count + 400);
+            chunk.forEach(item => {
+              if (action === 'delete') {
+                batch.delete(doc(db, type, item.id));
+              } else {
+                const { id: _, ...rest } = item;
+                batch.set(doc(collection(db, type)), rest);
+              }
+            });
+            await batch.commit();
+            count += chunk.length;
+          }
+        };
+
         if (!merge) {
-          // Clear existing
-          const donations = await getDocs(collection(db, 'donations'));
-          donations.forEach(d => batch.delete(doc(db, 'donations', d.id)));
-          const expenses = await getDocs(collection(db, 'expenses'));
-          expenses.forEach(e => batch.delete(doc(db, 'expenses', e.id)));
+          // Clear everything
+          const collections = ['donations', 'expenses', 'auditLogs', 'patients', 'doctors', 'machines', 'staff', 'ledger', 'sessions', 'prescriptions', 'shifts', 'schedule', 'inventory', 'invoices', 'users'];
+          for (const collName of collections) {
+            const snapshot = await getDocs(collection(db, collName));
+            await commitBatch(snapshot.docs.map(d => ({ id: d.id })), collName, 'delete');
+          }
         }
 
-        if (data.donations) {
-          data.donations.forEach(d => {
-            const { id: _, ...rest } = d;
-            batch.set(doc(collection(db, 'donations')), rest);
-          });
+        if (data.donations) await commitBatch(data.donations, 'donations', 'set');
+        if (data.expenses) await commitBatch(data.expenses, 'expenses', 'set');
+        if (data.users) await commitBatch(data.users, 'users', 'set');
+        if (data.patients) await commitBatch(data.patients, 'patients', 'set');
+        if (data.doctors) await commitBatch(data.doctors, 'doctors', 'set');
+        if (data.machines) await commitBatch(data.machines, 'machines', 'set');
+        if (data.dialysisStaff) await commitBatch(data.dialysisStaff, 'staff', 'set');
+        if (data.ledger) await commitBatch(data.ledger, 'ledger', 'set');
+        if (data.sessions) await commitBatch(data.sessions, 'sessions', 'set');
+        if (data.prescriptions) await commitBatch(data.prescriptions, 'prescriptions', 'set');
+        if (data.shifts) await commitBatch(data.shifts, 'shifts', 'set');
+        if (data.schedule) await commitBatch(data.schedule, 'schedule', 'set');
+        if (data.inventory) await commitBatch(data.inventory, 'inventory', 'set');
+        if (data.invoices) await commitBatch(data.invoices, 'invoices', 'set');
+        if (data.insuranceClaims) await commitBatch(data.insuranceClaims, 'insuranceClaims', 'set');
+        if (data.maintenanceLogs) await commitBatch(data.maintenanceLogs, 'maintenanceLogs', 'set');
+        
+        if (data.settings) {
+          try {
+            await setDoc(doc(db, 'config', 'settings'), data.settings);
+          } catch (e) {
+            console.error('Error importing settings:', e);
+          }
         }
 
-        if (data.expenses) {
-          data.expenses.forEach(e => {
-            const { id: _, ...rest } = e;
-            batch.set(doc(collection(db, 'expenses')), rest);
-          });
-        }
-
-        await batch.commit();
-        get().addAuditLog({ action: 'IMPORT', entity: 'SYSTEM', details: `Imported data (Merge: ${merge})`, user: get().currentUser?.username || 'Unknown' });
+        get().addAuditLog({ action: 'IMPORT', entity: 'SYSTEM', details: `Imported full data (Merge: ${merge})`, user: get().currentUser?.username || 'Unknown' });
       },
 
       clearAuditLogs: async () => {
@@ -1012,10 +1056,117 @@ export const useStore = create<AppState>()(
         try { await deleteDoc(doc(db, 'schedule', id)); }
         catch (e) { handleFirestoreError(e, OperationType.DELETE, `schedule/${id}`); }
       },
+
+      cleanupDuplicates: async () => {
+        const { donations, expenses } = get();
+        
+        // Helper to normalize text (especially for Urdu variants)
+        const normalizeText = (text: string) => {
+          if (!text) return '';
+          return text.trim()
+            .toLowerCase()
+            .replace(/[\u064A\u06CC]/g, 'ی') // Replace Arabic Ya and Farsi/Urdu Ya with standard Ya
+            .replace(/[\u0643\u06A9]/g, 'ک') // Replace Arabic Kaf and Urdu Kaf with standard Kaf
+            .replace(/\s+/g, ' '); // Replace multiple spaces with single space
+        };
+
+        const donationDuplicates: string[] = [];
+        const seenDonations = new Set();
+        
+        donations.forEach(d => {
+          const key = `${d.date}_${normalizeText(d.donorName)}_${d.amount}`;
+          if (seenDonations.has(key)) {
+            donationDuplicates.push(d.id);
+          } else {
+            seenDonations.add(key);
+          }
+        });
+
+        const expenseDuplicates: string[] = [];
+        const seenExpenses = new Set();
+        
+        expenses.forEach(e => {
+          const key = `${e.date}_${normalizeText(e.description)}_${e.amount}`;
+          if (seenExpenses.has(key)) {
+            expenseDuplicates.push(e.id);
+          } else {
+            seenExpenses.add(key);
+          }
+        });
+
+        // Batch delete function to handle 500 limit
+        const performBatchDelete = async (ids: string[], collectionName: string) => {
+          let count = 0;
+          while (count < ids.length) {
+            const batch = writeBatch(db);
+            const chunk = ids.slice(count, count + 400); // chunk size slightly below 500 for safety
+            chunk.forEach(id => {
+              batch.delete(doc(db, collectionName, id));
+            });
+            await batch.commit();
+            count += chunk.length;
+          }
+        };
+
+        if (donationDuplicates.length > 0) {
+          await performBatchDelete(donationDuplicates, 'donations');
+        }
+        
+        if (expenseDuplicates.length > 0) {
+          await performBatchDelete(expenseDuplicates, 'expenses');
+        }
+
+        if (donationDuplicates.length > 0 || expenseDuplicates.length > 0) {
+          get().addAuditLog({ 
+            action: 'DELETE', 
+            entity: 'SYSTEM', 
+            details: `Cleaned up duplicates: ${donationDuplicates.length} donations, ${expenseDuplicates.length} expenses`, 
+            user: get().currentUser?.username || 'Admin' 
+          });
+        }
+
+        return { 
+          donationsRemoved: donationDuplicates.length, 
+          expensesRemoved: expenseDuplicates.length 
+        };
+      },
+
+      wipeAllData: async () => {
+        const batch = writeBatch(db);
+        const donations = await getDocs(collection(db, 'donations'));
+        donations.forEach(d => batch.delete(doc(db, 'donations', d.id)));
+        
+        const expenses = await getDocs(collection(db, 'expenses'));
+        expenses.forEach(e => batch.delete(doc(db, 'expenses', e.id)));
+
+        // Also clear dialysis/water filter data if requested (optional, but keep it for a true wipe)
+        const collectionsToClear = [
+          'patients', 'doctors', 'machines', 'staff', 'ledger', 'sessions', 
+          'prescriptions', 'shifts', 'schedule', 'inventory', 'invoices'
+        ];
+
+        for (const collName of collectionsToClear) {
+          const snapshot = await getDocs(collection(db, collName));
+          snapshot.forEach(d => batch.delete(doc(db, collName, d.id)));
+        }
+
+        await batch.commit();
+
+        get().addAuditLog({ 
+          action: 'DELETE', 
+          entity: 'SYSTEM', 
+          details: 'Full system data wipe (Factory Reset)', 
+          user: get().currentUser?.username || 'Admin' 
+        });
+      },
     }),
     {
       name: 'donation-app-storage',
-      partialize: (state) => ({ language: state.language }), // Only persist language locally
+      partialize: (state) => ({ 
+        language: state.language,
+        role: state.role,
+        currentUser: state.currentUser
+      }),
     }
   )
 );

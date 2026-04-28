@@ -18,6 +18,9 @@ import DonationMethods from './components/DonationMethods';
 import DialysisManagement from './components/DialysisManagement';
 import WaterFilterManagement from './components/WaterFilterManagement';
 
+import { doc, getDocFromServer } from 'firebase/firestore';
+import { db } from './firebase';
+
 export default function App() {
   const role = useStore((state) => state.role);
   const fetchDataFromFirebase = useStore((state) => state.fetchDataFromFirebase);
@@ -25,6 +28,19 @@ export default function App() {
 
   useEffect(() => {
     fetchDataFromFirebase();
+    
+    // Validate Connection to Firestore
+    async function testConnection() {
+      try {
+        await getDocFromServer(doc(db, 'config', 'settings'));
+        console.log("Firestore connected successfully");
+      } catch (error) {
+        if(error instanceof Error && error.message.includes('offline')) {
+          console.error("Please check your Firebase configuration. The client is offline.");
+        }
+      }
+    }
+    testConnection();
   }, [fetchDataFromFirebase]);
 
   useEffect(() => {

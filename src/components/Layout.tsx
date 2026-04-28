@@ -146,7 +146,7 @@ export default function Layout({ children, currentTab, setCurrentTab }: LayoutPr
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden print:overflow-visible h-screen md:h-auto">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden print:overflow-visible h-screen md:h-auto print:h-auto print:block">
         <header className="hidden md:flex bg-white shadow-sm z-10 p-4 justify-between items-center print:hidden">
           <h1 className="text-xl font-semibold text-gray-800">
             {navItems.find(i => i.id === currentTab)?.label}
@@ -181,8 +181,8 @@ export default function Layout({ children, currentTab, setCurrentTab }: LayoutPr
           </button>
         </div>
 
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-3 md:p-6 pb-20 md:pb-24 print:overflow-visible print:p-0 print:bg-white">
-          <div className="max-w-7xl mx-auto w-full">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-3 md:p-6 pb-20 md:pb-24 print:overflow-visible print:p-0 print:bg-white print:block print:h-auto">
+          <div className="max-w-7xl mx-auto w-full print:max-w-none print:w-full print:mx-0 print:p-0">
             {children}
           </div>
         </main>

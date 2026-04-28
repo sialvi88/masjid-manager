@@ -9,6 +9,7 @@ export default function Expenses() {
   const role = useStore(state => state.role);
   const currentUser = useStore(state => state.currentUser);
   const isAdmin = currentUser?.role === 'Admin';
+  const canManage = !!currentUser && (isAdmin || currentUser.permissions?.includes('manage_expenses'));
   const expenses = useStore(state => state.expenses);
   const deletedExpenses = useStore(state => state.deletedExpenses);
   const addExpense = useStore(state => state.addExpense);
@@ -22,7 +23,79 @@ export default function Expenses() {
   const isRtl = language === 'ur';
   const { currency, dateFormat } = settings;
 
+  const CategorySelector = ({ value, onChange, categories, t, isRtl }: any) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const filteredCategories = (categories || []).filter((cat: string) => 
+      cat.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    return (
+      <div className="relative">
+        <div className="flex gap-1">
+          <input
+            type="text"
+            required
+            placeholder={t.category}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+          />
+            <button
+              type="button"
+              onClick={() => setIsOpen(!isOpen)}
+              className="px-2 border border-gray-300 rounded-md bg-gray-50 hover:bg-gray-100 transition-colors"
+              title={t.selectCategory}
+            >
+            <Plus className={`w-4 h-4 text-blue-600 transition-transform duration-200 ${isOpen ? 'rotate-45' : ''}`} />
+          </button>
+        </div>
+        
+        {isOpen && (
+          <>
+            <div className="fixed inset-0 z-[55]" onClick={() => setIsOpen(false)} />
+            <div className={`absolute z-[60] mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-hidden flex flex-col ${isRtl ? 'right-0' : 'left-0'}`}>
+              <div className="p-2 border-b border-gray-100 bg-gray-50">
+                <input
+                  type="text"
+                  placeholder={t.search + "..."}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  autoFocus
+                />
+              </div>
+              <div className="overflow-y-auto py-1">
+                {filteredCategories.length > 0 ? (
+                  filteredCategories.map((cat: string, idx: number) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        onChange(cat);
+                        setIsOpen(false);
+                      }}
+                      className={`w-full ${isRtl ? 'text-right' : 'text-left'} px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors`}
+                    >
+                      {cat}
+                    </button>
+                  ))
+                ) : (
+                  <div className="px-4 py-6 text-sm text-gray-500 text-center italic">
+                    {t.noCategoriesFound}
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
+
   const formatDate = (dateStr: string) => {
+    if (!dateStr) return '-';
     try {
       const date = new Date(dateStr);
       return format(date, dateFormat.replace('DD', 'dd').replace('YYYY', 'yyyy'));
@@ -41,11 +114,12 @@ export default function Expenses() {
   
   // Form state
   const [currentExpense, setCurrentExpense] = useState<Partial<Expense>>({});
-  const [bulkEditData, setBulkEditData] = useState<{ date?: string, description?: string }>({});
+  const [bulkEditData, setBulkEditData] = useState<{ date?: string, description?: string, category?: string }>({});
 
   const filteredExpenses = expenses.filter(e => 
     e.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    e.amount.toString().includes(searchTerm)
+    e.amount.toString().includes(searchTerm) ||
+    (e.category && e.category.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const handleSelectAll = () => {
@@ -76,6 +150,7 @@ export default function Expenses() {
     const updates: Partial<Expense> = {};
     if (bulkEditData.date) updates.date = bulkEditData.date;
     if (bulkEditData.description) updates.description = bulkEditData.description;
+    if (bulkEditData.category) updates.category = bulkEditData.category;
     
     if (Object.keys(updates).length > 0) {
       await useStore.getState().bulkUpdateExpenses(selectedIds, updates);
@@ -92,6 +167,7 @@ export default function Expenses() {
         description: currentExpense.description,
         amount: Number(currentExpense.amount),
         date: currentExpense.date,
+        category: currentExpense.category,
       });
       setIsAddModalOpen(false);
       setCurrentExpense({});
@@ -105,6 +181,7 @@ export default function Expenses() {
         description: currentExpense.description,
         amount: Number(currentExpense.amount),
         date: currentExpense.date,
+        category: currentExpense.category,
       });
       setIsEditModalOpen(false);
       setCurrentExpense({});
@@ -135,7 +212,7 @@ export default function Expenses() {
           </div>
 
           <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-            {isAdmin && (
+            {canManage && (
               <button
                 onClick={() => {
                   setCurrentExpense({
@@ -158,7 +235,7 @@ export default function Expenses() {
           </div>
         </div>
 
-        {isAdmin && (
+        {canManage && (
           <div className="flex flex-wrap gap-2 border-t border-gray-100 pt-4">
             {selectedIds.length > 0 && (
               <>
@@ -198,7 +275,7 @@ export default function Expenses() {
           <table className={`min-w-full divide-y divide-gray-200 ${isRtl ? 'text-right' : 'text-left'}`}>
             <thead className="bg-gray-50">
               <tr>
-                {isAdmin && (
+                {canManage && (
                   <th className={`px-4 md:px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-wider w-10 md:w-12`}>
                     <button onClick={handleSelectAll} className="flex items-center">
                       {selectedIds.length === filteredExpenses.length && filteredExpenses.length > 0 
@@ -208,9 +285,10 @@ export default function Expenses() {
                   </th>
                 )}
                 <th className={`px-4 md:px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider`}>{t.date}</th>
+                <th className={`px-4 md:px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider`}>{t.category}</th>
                 <th className={`px-4 md:px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider`}>{t.description}</th>
                 <th className={`px-4 md:px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider`}>{t.amount}</th>
-                {isAdmin && (
+                {canManage && (
                   <th className="px-4 md:px-6 py-3 text-center text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider">{t.actions}</th>
                 )}
               </tr>
@@ -218,14 +296,14 @@ export default function Expenses() {
             <tbody className="bg-white divide-y divide-gray-100">
               {filteredExpenses.length === 0 ? (
                 <tr>
-                  <td colSpan={isAdmin ? 5 : 3} className="px-6 py-12 text-center text-gray-400 text-sm italic">
+                  <td colSpan={canManage ? 5 : 4} className="px-6 py-12 text-center text-gray-400 text-sm italic">
                     {t.noRecords}
                   </td>
                 </tr>
               ) : (
                 filteredExpenses.map((expense) => (
                   <tr key={expense.id} className={`${selectedIds.includes(expense.id) ? 'bg-blue-50/50' : 'hover:bg-gray-50/50 transition-colors'}`}>
-                    {isAdmin && (
+                    {canManage && (
                       <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap">
                         <button onClick={() => handleSelect(expense.id)} className="flex items-center">
                           {selectedIds.includes(expense.id) 
@@ -235,9 +313,10 @@ export default function Expenses() {
                       </td>
                     )}
                     <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-600">{formatDate(expense.date)}</td>
+                    <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-500 italic">{expense.category || '-'}</td>
                     <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm font-semibold text-gray-800">{expense.description}</td>
                     <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-red-600 font-bold tabular-nums">{currency} {expense.amount.toLocaleString()}</td>
-                    {isAdmin && (
+                    {canManage && (
                       <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-sm font-medium text-center">
                         <div className="flex justify-center gap-2 md:gap-3">
                           <button onClick={() => openEditModal(expense)} className="p-1.5 text-blue-600 hover:bg-blue-100 rounded transition-colors" title={t.edit}>
@@ -277,6 +356,17 @@ export default function Expenses() {
             </Dialog.Title>
             
             <form onSubmit={isEditModalOpen ? handleEditSubmit : handleAddSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t.category}</label>
+                <CategorySelector
+                  value={currentExpense.category || ''}
+                  onChange={(val: string) => setCurrentExpense({...currentExpense, category: val})}
+                  categories={settings.expenseCategories}
+                  t={t}
+                  isRtl={isRtl}
+                />
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t.description}</label>
                 <input
@@ -345,6 +435,20 @@ export default function Expenses() {
                 <p className="text-sm text-blue-800">
                   {t.bulkEditHelp}
                 </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t.category}</label>
+                <select
+                  value={bulkEditData.category || ''}
+                  onChange={(e) => setBulkEditData({...bulkEditData, category: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">{t.leaveEmptyToKeepCurrent}</option>
+                  {(settings.expenseCategories || []).map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
               </div>
 
               <div>

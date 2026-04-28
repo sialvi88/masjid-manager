@@ -54,8 +54,9 @@ export default function NewsSettings() {
           <label className="block text-gray-700 font-medium mb-2">{t.speedSeconds}:</label>
           <input 
             type="number"
+            min="1"
             value={speed}
-            onChange={(e) => setSpeed(Number(e.target.value))}
+            onChange={(e) => setSpeed(Math.max(1, Number(e.target.value)))}
             className="w-full p-2 border border-gray-300 rounded-lg"
           />
         </div>
@@ -63,8 +64,10 @@ export default function NewsSettings() {
           <label className="block text-gray-700 font-medium mb-2">{t.fontSizePixels}:</label>
           <input 
             type="number"
+            min="8"
+            max="100"
             value={fontSize}
-            onChange={(e) => setFontSize(Number(e.target.value))}
+            onChange={(e) => setFontSize(Math.max(8, Number(e.target.value)))}
             className="w-full p-2 border border-gray-300 rounded-lg"
           />
         </div>

@@ -42,8 +42,9 @@ export default function NewsTicker() {
     </div>
   );
 
-  // Duration based on news length
-  const duration = (speed * rawNewsItems.length) / 3;
+  // Duration based on news length. Min speed of 1 second per block to prevent zero/negative.
+  const animationSpeed = Math.max(1, speed);
+  const duration = (animationSpeed * rawNewsItems.length) / 3;
 
   return (
     <div 
@@ -53,6 +54,7 @@ export default function NewsTicker() {
       {/* 1. Ticker Area (Entering from Right, going Left - Correct for Urdu TV) */}
       <div className="relative flex-1 overflow-hidden">
         <motion.div 
+          key={`ticker-${duration}-${rawNewsItems.length}-${language}`}
           className="flex flex-row-reverse whitespace-nowrap w-max h-full items-center absolute right-0"
           animate={{ x: ["0%", "50%"] }} // Moving Left in an absolute right-anchored container
           transition={{ 

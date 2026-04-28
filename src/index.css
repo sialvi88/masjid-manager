@@ -35,28 +35,166 @@ body {
     scrollbar-width: none;
   }
 }
-@media print {
-  @page {
-    size: A4 portrait;
-    margin: 15mm;
-  }
-  
-  body {
-    background-color: white !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
+/* Base report container - Removed all maximum width restrictions */
+#printable-report {
+  width: 100% !important;
+  max-width: none !important;
+  background: white;
+  overflow: visible;
+}
 
+/* Force full width and high quality during export capture */
+#printable-report.export-active {
+  width: 1400px !important;
+  max-width: 1400px !important;
+  min-width: 1400px !important;
+  padding: 60px !important;
+  background: white !important;
+  display: block !important;
+  font-family: "Jameel Noori Nastaleeq", "Noto Nastaliq Urdu", serif !important;
+  box-sizing: border-box !important;
+}
+
+#printable-report.export-active table {
+  width: 100% !important;
+  min-width: 100% !important;
+  table-layout: fixed !important;
+  border-collapse: collapse !important;
+  border: 1.5pt solid black !important;
+  margin-top: 20px !important;
+}
+
+#printable-report.export-active th, #printable-report.export-active td {
+  border: 1pt solid black !important;
+  padding: 8px 4px !important;
+  font-size: 11pt !important;
+  word-wrap: break-word !important;
+  overflow: hidden !important;
+  vertical-align: middle !important;
+  line-height: 1.2 !important;
+}
+
+#printable-report.export-active th {
+  background-color: #f3f4f6 !important;
+  font-weight: bold !important;
+  text-align: center !important;
+  white-space: normal !important;
+  min-height: 50px !important;
+}
+
+/* Precise Column Widths to prevent squeezing */
+.col-date { width: 14% !important; white-space: nowrap !important; }
+.col-category { width: 14% !important; }
+.col-type { width: 10% !important; }
+.col-name { width: 22% !important; text-align: right !important; }
+.col-amount { width: 10% !important; }
+.col-percent { width: 10% !important; }
+.col-share { width: 10% !important; }
+.col-net { width: 10% !important; }
+
+#printable-report.export-active .grid {
+  display: flex !important;
+  flex-direction: row !important;
+  width: 100% !important;
+  gap: 20px !important;
+  margin-bottom: 30px !important;
+}
+
+#printable-report.export-active .grid > div {
+  flex: 1 !important;
+  border: 1.5pt solid black !important;
+  padding: 20px !important;
+  border-radius: 10px !important;
+  text-align: center !important;
+}
+
+@media screen {
   #printable-report {
+    margin: 0 auto;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  }
+}
+
+/* Table styling - Full Width */
+#printable-report table {
+  width: 100% !important; 
+  min-width: 100% !important;
+  table-layout: fixed !important; 
+  direction: rtl !important;
+  border-collapse: collapse !important;
+}
+
+@media print {
+  /* The Global Unlock - Force every possible wrapper to release its width */
+  html, body, #root, [class*="min-h-screen"], [class*="max-w-"], main, section {
     width: 100% !important;
     max-width: none !important;
     margin: 0 !important;
     padding: 0 !important;
-    box-shadow: none !important;
+    display: block !important;
+    position: static !important;
+    overflow: visible !important;
+    background: white !important;
   }
 
-  .print\:hidden {
+  body {
+    visibility: hidden;
+  }
+  
+  #printable-report, #printable-report * {
+    visibility: visible !important;
+  }
+  
+  #printable-report {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 15mm !important;
+  }
+
+  table { 
+    width: 100% !important; 
+    border: 1.5pt solid black !important;
+  }
+
+  th, td { 
+    border: 1pt solid black !important;
+    height: auto !important;
+    padding: 8pt 3pt !important;
+    font-size: 10pt !important;
+    word-wrap: break-word !important;
+    vertical-align: middle !important;
+  }
+
+  .grid {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 20px !important;
+    width: 100% !important;
+    margin-bottom: 40px !important;
+  }
+
+  .grid > div {
+    flex: 1 !important;
+    border: 2pt solid black !important;
+    padding: 20px !important;
+  }
+
+  /* Ensure Urdu text doesn't clip */
+  * {
+    line-height: 1.6 !important;
+  }
+
+  /* Hide UI elements definitely */
+  nav, header, aside, button, .print\:hidden, .news-ticker-container, .export-hide {
     display: none !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 0; /* Let the container padding handle the margins */
   }
 }
 
