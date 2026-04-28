@@ -138,7 +138,6 @@ export default function Reports() {
   // Columns visibility
   const [columns, setColumns] = useState({
     date: true,
-    category: true,
     type: true,
     donorName: true,
     amount: true,
@@ -209,7 +208,6 @@ export default function Reports() {
       id: d.id,
       date: d.date,
       type: t.income,
-      category: '-',
       donorName: d.donorName,
       amount: d.amount,
       percentage: d.percentage,
@@ -221,7 +219,6 @@ export default function Reports() {
       id: e.id,
       date: e.date,
       type: t.expense,
-      category: e.category || '-',
       donorName: e.description,
       amount: e.amount,
       percentage: '-',
@@ -233,7 +230,6 @@ export default function Reports() {
       id: m.id,
       date: m.date,
       type: t.manualEntry,
-      category: '-',
       donorName: m.donorName,
       amount: m.amount,
       percentage: m.percentage,
@@ -358,7 +354,6 @@ export default function Reports() {
     const exportData = finalData.map(d => {
       const row: any = {};
       if (columns.date) row[t.date] = formatDate(d.date);
-      if (columns.category) row[t.category] = d.category;
       if (columns.type) row[t.type] = d.type;
       if (columns.donorName) row[t.donorName] = d.donorName;
       if (columns.amount) row[t.amount] = d.amount;
@@ -460,7 +455,6 @@ export default function Reports() {
               <thead>
                 <tr className="bg-gray-50 uppercase tracking-tight">
                   {columns.date && <th className="border border-black p-1.5 col-date text-center font-bold text-[10px] sm:text-xs">{t.date}</th>}
-                  {columns.category && <th className="border border-black p-1.5 col-category text-center font-bold text-[10px] sm:text-xs">{t.category}</th>}
                   {columns.type && <th className="border border-black p-1.5 col-type text-center font-bold text-[10px] sm:text-xs">{t.type}</th>}
                   {columns.donorName && <th className="border border-black p-1.5 col-name text-right font-bold pr-4 text-[10px] sm:text-xs">{t.donorName}</th>}
                   {columns.amount && <th className="border border-black p-1.5 col-amount text-center font-bold text-[10px] sm:text-xs">{t.amount}</th>}
@@ -473,7 +467,6 @@ export default function Reports() {
                 {finalData.map((row, idx) => (
                   <tr key={row.id || idx} className="h-auto">
                     {columns.date && <td className="border border-black px-1.5 py-2 text-center whitespace-nowrap col-date text-[10px] sm:text-sm tabular-nums" dir="ltr">{formatDate(row.date)}</td>}
-                    {columns.category && <td className="border border-black px-1.5 py-2 text-center italic col-category text-[10px] sm:text-sm">{row.category}</td>}
                     {columns.type && <td className="border border-black px-1.5 py-2 text-center col-type text-[10px] sm:text-sm">{row.type}</td>}
                     {columns.donorName && <td className="border border-black px-2 py-2 text-right font-medium leading-tight col-name text-[10px] sm:text-sm">{row.donorName}</td>}
                     {columns.amount && <td className="border border-black px-1.5 py-2 text-center col-amount text-[10px] sm:text-sm tabular-nums">{currency} {Number(row.amount).toLocaleString()}</td>}
@@ -761,7 +754,6 @@ export default function Reports() {
               <thead className="bg-gray-50">
                 <tr>
                   {columns.date && <th className="col-date px-1 md:px-4 py-2 md:py-3 text-[9px] md:text-sm font-bold text-gray-700 text-center">{t.date}</th>}
-                  {columns.category && <th className="col-category px-1 md:px-4 py-2 md:py-3 text-[9px] md:text-sm font-bold text-gray-700 text-center">{t.category}</th>}
                   {columns.type && <th className="col-type px-1 md:px-4 py-2 md:py-3 text-[9px] md:text-sm font-bold text-gray-700 text-center">{t.type}</th>}
                   {columns.donorName && <th className="donor-col col-name px-1 md:px-4 py-2 md:py-3 text-[9px] md:text-sm font-bold text-gray-700 text-right pr-4">{t.donorName}</th>}
                   {columns.amount && <th className="col-amount px-1 md:px-4 py-2 md:py-3 text-[9px] md:text-sm font-bold text-gray-700 text-center">{t.amount}</th>}
@@ -774,7 +766,6 @@ export default function Reports() {
                 {finalData.map((row, idx) => (
                   <tr key={row.id || idx} className={`${row.isManual ? 'bg-yellow-50' : row.type === 'خرچہ' ? 'bg-red-50' : ''} hover:bg-gray-50 transition-colors`}>
                     {columns.date && <td className="col-date px-1 md:px-4 py-2 md:py-3 text-[9px] md:text-sm text-gray-600 text-center italic tabular-nums" dir="ltr">{formatDate(row.date)}</td>}
-                    {columns.category && <td className="col-category px-1 md:px-4 py-2 md:py-3 text-[9px] md:text-sm text-gray-500 text-center italic truncate max-w-[80px] md:max-w-none">{row.category}</td>}
                     {columns.type && <td className="col-type px-1 md:px-4 py-2 md:py-3 text-[9px] md:text-sm font-medium text-gray-700 text-center">{row.type}</td>}
                     {columns.donorName && <td className="col-name donor-col px-1 md:px-4 py-2 md:py-3 text-[9px] md:text-sm font-bold text-gray-800 text-right pr-4 overflow-visible print:whitespace-normal leading-tight">{row.donorName}</td>}
                     {columns.amount && <td className="col-amount px-1 md:px-4 py-2 md:py-3 text-[9px] md:text-sm text-blue-700 font-bold text-center tabular-nums">{currency} {Number(row.amount).toLocaleString()}</td>}
