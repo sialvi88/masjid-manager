@@ -15,7 +15,8 @@ export default function Donations() {
   const currentUser = useStore(state => state.currentUser);
   const donations = useStore(state => state.donations);
   const isAdmin = currentUser?.role === 'Admin';
-  const canManage = !!currentUser && (isAdmin || (Array.isArray(currentUser.permissions) && currentUser.permissions.includes('manage_donations')));
+  const canAdd = !!currentUser && (isAdmin || (Array.isArray(currentUser.permissions) && currentUser.permissions.includes('manage_donations')));
+  const canModify = isAdmin; // Only Admins can edit, delete, or duplicate
   const globalPercentage = useStore(state => state.globalPercentage);
   const setGlobalPercentage = useStore(state => state.setGlobalPercentage);
   const addDonation = useStore(state => state.addDonation);
@@ -239,7 +240,7 @@ export default function Donations() {
           </div>
 
           <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-            {canManage && (
+            {canAdd && (
               <button
                 onClick={() => {
                   setCurrentDonation({
@@ -263,7 +264,7 @@ export default function Donations() {
           </div>
         </div>
 
-        {canManage && (
+        {canModify && (
           <div className="flex flex-wrap gap-2 border-t border-gray-100 pt-4">
             <button
               onClick={() => setIsPercentageModalOpen(true)}
@@ -301,7 +302,7 @@ export default function Donations() {
           <table className={`min-w-full divide-y divide-gray-200 ${isRtl ? 'text-right' : 'text-left'}`}>
             <thead className="bg-gray-50">
               <tr>
-                {canManage && (
+                {canModify && (
                   <th className={`px-4 md:px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-wider w-10 md:w-12`}>
                     <button onClick={handleSelectAll} className="flex items-center">
                       {selectedIds.length === filteredDonations.length && filteredDonations.length > 0 
@@ -316,7 +317,7 @@ export default function Donations() {
                 <th className={`px-4 md:px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider`}>{t.percentage}</th>
                 <th className={`px-4 md:px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider`}>{t.collectorShare}</th>
                 <th className={`px-4 md:px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider`}>{t.netAmount}</th>
-                {canManage && (
+                {canModify && (
                   <th className="px-4 md:px-6 py-3 text-center text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider">{t.actions}</th>
                 )}
               </tr>
@@ -324,14 +325,14 @@ export default function Donations() {
             <tbody className="bg-white divide-y divide-gray-100">
               {filteredDonations.length === 0 ? (
                 <tr>
-                  <td colSpan={canManage ? 8 : 7} className="px-6 py-12 text-center text-gray-400 text-sm italic">
+                  <td colSpan={canModify ? 8 : 7} className="px-6 py-12 text-center text-gray-400 text-sm italic">
                     {t.noRecords}
                   </td>
                 </tr>
               ) : (
                 filteredDonations.map((donation) => (
                   <tr key={donation.id} className={`${selectedIds.includes(donation.id) ? 'bg-blue-50/50' : 'hover:bg-gray-50/50 transition-colors'}`}>
-                    {canManage && (
+                    {canModify && (
                       <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap">
                         <button onClick={() => handleSelect(donation.id)} className="flex items-center">
                           {selectedIds.includes(donation.id) 
@@ -346,7 +347,7 @@ export default function Donations() {
                     <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-500">{donation.percentage}%</td>
                     <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-orange-600 font-medium tabular-nums">{currency} {donation.collectorShare.toLocaleString()}</td>
                     <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-green-600 font-bold tabular-nums">{currency} {donation.netAmount.toLocaleString()}</td>
-                    {canManage && (
+                    {canModify && (
                       <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-sm font-medium text-center">
                         <div className="flex justify-center gap-2 md:gap-3">
                           <button onClick={() => openEditModal(donation)} className="p-1.5 text-blue-600 hover:bg-blue-100 rounded transition-colors" title={t.edit}>

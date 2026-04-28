@@ -854,6 +854,9 @@ export const useStore = create<AppState>()(
                 batch.delete(doc(db, type, item.id));
               } else {
                 const { id: _, ...rest } = item;
+                // If the item had an ID in the backup, we can choose to keep it or let Firebase generate one
+                // For a full system restore, keeping IDs might be useful for relationships, but current logic uses doc(collection(db, type))
+                // Let's stick to generating new IDs for reliability unless it's patients/doctors etc where IDs might be linked
                 batch.set(doc(collection(db, type)), rest);
               }
             });
@@ -864,10 +867,14 @@ export const useStore = create<AppState>()(
 
         if (!merge) {
           // Clear everything
-          const collections = ['donations', 'expenses', 'auditLogs', 'patients', 'doctors', 'machines', 'staff', 'ledger', 'sessions', 'prescriptions', 'shifts', 'schedule', 'inventory', 'invoices', 'users'];
+          const collections = ['donations', 'expenses', 'auditLogs', 'patients', 'doctors', 'machines', 'staff', 'ledger', 'sessions', 'prescriptions', 'shifts', 'schedule', 'inventory', 'invoices', 'users', 'insuranceClaims', 'maintenanceLogs', 'paymentMethods'];
           for (const collName of collections) {
-            const snapshot = await getDocs(collection(db, collName));
-            await commitBatch(snapshot.docs.map(d => ({ id: d.id })), collName, 'delete');
+            try {
+              const snapshot = await getDocs(collection(db, collName));
+              await commitBatch(snapshot.docs.map(d => ({ id: d.id })), collName, 'delete');
+            } catch (e) {
+              console.error(`Error clearing ${collName}:`, e);
+            }
           }
         }
 
@@ -887,6 +894,8 @@ export const useStore = create<AppState>()(
         if (data.invoices) await commitBatch(data.invoices, 'invoices', 'set');
         if (data.insuranceClaims) await commitBatch(data.insuranceClaims, 'insuranceClaims', 'set');
         if (data.maintenanceLogs) await commitBatch(data.maintenanceLogs, 'maintenanceLogs', 'set');
+        if (data.paymentMethods) await commitBatch(data.paymentMethods, 'paymentMethods', 'set');
+        if (data.auditLogs) await commitBatch(data.auditLogs, 'auditLogs', 'set');
         
         if (data.settings) {
           try {
@@ -894,6 +903,10 @@ export const useStore = create<AppState>()(
           } catch (e) {
             console.error('Error importing settings:', e);
           }
+        }
+
+        if (typeof data.globalPercentage === 'number') {
+           set({ globalPercentage: data.globalPercentage });
         }
 
         get().addAuditLog({ action: 'IMPORT', entity: 'SYSTEM', details: `Imported full data (Merge: ${merge})`, user: get().currentUser?.username || 'Unknown' });

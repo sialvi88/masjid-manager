@@ -89,7 +89,7 @@ export default function Reports() {
   const role = useStore(state => state.role);
   const currentUser = useStore(state => state.currentUser);
   const isAdmin = currentUser?.role === 'Admin';
-  const canManageDonations = !!currentUser && (isAdmin || (Array.isArray(currentUser.permissions) && currentUser.permissions.includes('manage_donations')));
+  const canAddManual = isAdmin; // Restricted to Admin only
   const donations = useStore(state => state.donations);
   const expenses = useStore(state => state.expenses);
   const loadAllDonations = useStore(state => state.loadAllDonations);
@@ -653,7 +653,7 @@ export default function Reports() {
       </div>
 
         {/* Manual Entry Section (Above Report) */}
-        {canManageDonations && (
+        {canAddManual && (
           <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-100 export-hide print:hidden w-full">
             <h3 className="text-sm font-bold text-blue-800 mb-4 flex items-center">
               <Plus className="w-5 h-5 ml-2" />

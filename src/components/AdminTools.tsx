@@ -23,6 +23,11 @@ export default function AdminTools() {
   const [newCategory, setNewCategory] = useState('');
   const [newExpenseCategory, setNewExpenseCategory] = useState('');
 
+  // Sync with store settings when they load from Firebase
+  React.useEffect(() => {
+    setLocalSettings(settings);
+  }, [settings]);
+
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [cleanupResult, setCleanupResult] = useState<{ donationsRemoved: number, expensesRemoved: number } | null>(null);
   const [isCleaning, setIsCleaning] = useState(false);
@@ -99,43 +104,52 @@ export default function AdminTools() {
   };
 
   const handleBackup = async () => {
-    // Fetch latest users if possible
-    const usersSnapshot = await getDocs(collection(db, 'users'));
-    const users = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    try {
+      // Helper to fetch all docs from a collection
+      const fetchAll = async (collName: string) => {
+        const snapshot = await getDocs(collection(db, collName));
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      };
 
-    const data = {
-      donations: store.donations,
-      expenses: store.expenses,
-      patients: store.patients,
-      doctors: store.doctors,
-      machines: store.machines,
-      dialysisStaff: store.dialysisStaff,
-      ledger: store.ledger,
-      paymentMethods: store.paymentMethods,
-      sessions: store.sessions,
-      prescriptions: store.prescriptions,
-      shifts: store.shifts,
-      schedule: store.schedule,
-      inventory: store.inventory,
-      invoices: store.invoices,
-      insuranceClaims: store.insuranceClaims,
-      maintenanceLogs: store.maintenanceLogs,
-      settings: store.settings,
-      users: users,
-      globalPercentage: store.globalPercentage,
-      version: '1.2',
-      exportDate: new Date().toISOString()
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `full_backup_${format(new Date(), 'yyyy-MM-dd_HH-mm')}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    store.addAuditLog({ action: 'BACKUP', entity: 'SYSTEM', details: 'Downloaded comprehensive app backup', user: 'Admin' });
+      const data = {
+        donations: await fetchAll('donations'),
+        expenses: await fetchAll('expenses'),
+        patients: await fetchAll('patients'),
+        doctors: await fetchAll('doctors'),
+        machines: await fetchAll('machines'),
+        dialysisStaff: await fetchAll('staff'),
+        ledger: await fetchAll('ledger'),
+        paymentMethods: await fetchAll('paymentMethods'),
+        sessions: await fetchAll('sessions'),
+        prescriptions: await fetchAll('prescriptions'),
+        shifts: await fetchAll('shifts'),
+        schedule: await fetchAll('schedule'),
+        inventory: await fetchAll('inventory'),
+        invoices: await fetchAll('invoices'),
+        insuranceClaims: await fetchAll('insuranceClaims'),
+        maintenanceLogs: await fetchAll('maintenanceLogs'),
+        auditLogs: await fetchAll('auditLogs'),
+        users: await fetchAll('users'),
+        settings: store.settings,
+        globalPercentage: store.globalPercentage,
+        version: '1.3',
+        exportDate: new Date().toISOString()
+      };
+      
+      const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `full_backup_${format(new Date(), 'yyyy-MM-dd_HH-mm')}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      store.addAuditLog({ action: 'BACKUP', entity: 'SYSTEM', details: 'Downloaded comprehensive app backup', user: 'Admin' });
+    } catch (error) {
+      console.error('Backup error:', error);
+      alert('Error during backup. Please try again.');
+    }
   };
 
   const handleRestore = (e: React.ChangeEvent<HTMLInputElement>) => {

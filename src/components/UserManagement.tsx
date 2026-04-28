@@ -42,7 +42,7 @@ export default function UserManagement() {
         username: '',
         pin: '',
         role: 'Manager',
-        permissions: ['manage_donations', 'manage_expenses', 'view_reports']
+        permissions: []
       });
     }
     setIsModalOpen(true);

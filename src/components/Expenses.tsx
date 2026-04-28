@@ -9,7 +9,8 @@ export default function Expenses() {
   const role = useStore(state => state.role);
   const currentUser = useStore(state => state.currentUser);
   const isAdmin = currentUser?.role === 'Admin';
-  const canManage = !!currentUser && (isAdmin || (Array.isArray(currentUser.permissions) && currentUser.permissions.includes('manage_expenses')));
+  const canAdd = !!currentUser && (isAdmin || (Array.isArray(currentUser.permissions) && currentUser.permissions.includes('manage_expenses')));
+  const canModify = isAdmin;
   const expenses = useStore(state => state.expenses);
   const deletedExpenses = useStore(state => state.deletedExpenses);
   const addExpense = useStore(state => state.addExpense);
@@ -230,7 +231,7 @@ export default function Expenses() {
           </div>
 
           <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-            {canManage && (
+            {canAdd && (
               <button
                 onClick={() => {
                   setCurrentExpense({
@@ -253,7 +254,7 @@ export default function Expenses() {
           </div>
         </div>
 
-        {canManage && (
+        {canModify && (
           <div className="flex flex-wrap gap-2 border-t border-gray-100 pt-4">
             {selectedIds.length > 0 && (
               <>
@@ -293,7 +294,7 @@ export default function Expenses() {
           <table className={`min-w-full divide-y divide-gray-200 ${isRtl ? 'text-right' : 'text-left'}`}>
             <thead className="bg-gray-50">
               <tr>
-                {canManage && (
+                {canModify && (
                   <th className={`px-4 md:px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-wider w-10 md:w-12`}>
                     <button onClick={handleSelectAll} className="flex items-center">
                       {selectedIds.length === filteredExpenses.length && filteredExpenses.length > 0 
@@ -305,7 +306,7 @@ export default function Expenses() {
                 <th className={`px-4 md:px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider`}>{t.date}</th>
                 <th className={`px-4 md:px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider`}>{t.description}</th>
                 <th className={`px-4 md:px-6 py-3 ${isRtl ? 'text-right' : 'text-left'} text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider`}>{t.amount}</th>
-                {canManage && (
+                {canModify && (
                   <th className="px-4 md:px-6 py-3 text-center text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider">{t.actions}</th>
                 )}
               </tr>
@@ -313,14 +314,14 @@ export default function Expenses() {
             <tbody className="bg-white divide-y divide-gray-100">
               {filteredExpenses.length === 0 ? (
                 <tr>
-                  <td colSpan={canManage ? 5 : 4} className="px-6 py-12 text-center text-gray-400 text-sm italic">
+                  <td colSpan={canModify ? 5 : 4} className="px-6 py-12 text-center text-gray-400 text-sm italic">
                     {t.noRecords}
                   </td>
                 </tr>
               ) : (
                 filteredExpenses.map((expense) => (
                   <tr key={expense.id} className={`${selectedIds.includes(expense.id) ? 'bg-blue-50/50' : 'hover:bg-gray-50/50 transition-colors'}`}>
-                    {canManage && (
+                    {canModify && (
                       <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap">
                         <button onClick={() => handleSelect(expense.id)} className="flex items-center">
                           {selectedIds.includes(expense.id) 
@@ -332,7 +333,7 @@ export default function Expenses() {
                     <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-600">{formatDate(expense.date)}</td>
                     <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm font-semibold text-gray-800">{expense.description}</td>
                     <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-red-600 font-bold tabular-nums text-right">{currency} {expense.amount.toLocaleString()}</td>
-                    {canManage && (
+                    {canModify && (
                       <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-sm font-medium text-center">
                         <div className="flex justify-center gap-2 md:gap-3">
                           <button onClick={() => openEditModal(expense)} className="p-1.5 text-blue-600 hover:bg-blue-100 rounded transition-colors" title={t.edit}>
