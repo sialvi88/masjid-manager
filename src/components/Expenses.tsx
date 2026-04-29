@@ -1,9 +1,105 @@
-import React, { useState } from 'react';
-import { useStore, Expense } from '../store';
+import React, { useState, useEffect } from 'react';
+import { useStore, Expense, ExpenseItem } from '../store';
 import { format } from 'date-fns';
-import { Pencil, Trash2, Plus, Search, Undo2, CheckSquare, Square } from 'lucide-react';
+import { Pencil, Trash2, Plus, Search, Undo2, CheckSquare, Square, X } from 'lucide-react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { translations } from '../translations';
+
+const CategorySelector = ({ value, onChange, categories, t, isRtl }: any) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  const filteredCategories = (categories || []).filter((cat: string) => 
+    cat.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleToggleCategory = (cat: string) => {
+    const currentValues = value ? value.split(',').map((v: string) => v.trim()).filter(Boolean) : [];
+    let nextValues;
+    if (currentValues.includes(cat)) {
+      nextValues = currentValues.filter((v: string) => v !== cat);
+    } else {
+      nextValues = [...currentValues, cat];
+    }
+    onChange(nextValues.join(', '));
+    
+    // Return focus to input for continuous experience
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
+
+  return (
+    <div className="relative">
+      <div className="flex gap-1">
+        <div className="relative flex-1">
+          <input
+            ref={inputRef}
+            type="text"
+            required
+            placeholder={t.category}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className="px-2 border border-gray-300 rounded-md bg-gray-50 hover:bg-gray-100 transition-colors"
+          title={t.selectCategory}
+        >
+          <Plus className={`w-4 h-4 text-blue-600 transition-transform duration-200 ${isOpen ? 'rotate-45' : ''}`} />
+        </button>
+      </div>
+      
+      {isOpen && (
+        <>
+          <div className="fixed inset-0 z-[55]" onClick={() => setIsOpen(false)} />
+          <div className={`absolute z-[60] mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-hidden flex flex-col ${isRtl ? 'right-0' : 'left-0'}`}>
+            <div className="p-2 border-b border-gray-100 bg-gray-50">
+              <div className="relative">
+                <Search className={`absolute ${isRtl ? 'right-2' : 'left-2'} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400`} />
+                <input
+                  type="text"
+                  placeholder={t.search + "..."}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className={`w-full ${isRtl ? 'pr-8 pl-3' : 'pl-8 pr-3'} py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500`}
+                  autoFocus
+                />
+              </div>
+            </div>
+            <div className="overflow-y-auto py-1">
+              {filteredCategories.length > 0 ? (
+                filteredCategories.map((cat: string, idx: number) => {
+                  const currentValues = value ? value.split(',').map((v: string) => v.trim()) : [];
+                  const isSelected = currentValues.includes(cat);
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleToggleCategory(cat)}
+                      className={`w-full ${isRtl ? 'text-right' : 'text-left'} px-4 py-2.5 text-sm transition-colors flex items-center justify-between group ${isSelected ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700 hover:bg-blue-50'}`}
+                    >
+                      <span>{cat}</span>
+                      {isSelected && <CheckSquare className="w-3.5 h-3.5 text-blue-600" />}
+                    </button>
+                  );
+                })
+              ) : (
+                <div className="px-4 py-6 text-sm text-gray-500 text-center italic">
+                  {t.noCategoriesFound}
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
 
 export default function Expenses() {
   const role = useStore(state => state.role);
@@ -23,77 +119,6 @@ export default function Expenses() {
   const t = translations[language];
   const isRtl = language === 'ur';
   const { currency, dateFormat } = settings;
-
-  const CategorySelector = ({ value, onChange, categories, t, isRtl }: any) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [searchTerm, setSearchTerm] = useState('');
-
-    const filteredCategories = (categories || []).filter((cat: string) => 
-      cat.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    return (
-      <div className="relative">
-        <div className="flex gap-1">
-          <input
-            type="text"
-            required
-            placeholder={t.category}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-          />
-            <button
-              type="button"
-              onClick={() => setIsOpen(!isOpen)}
-              className="px-2 border border-gray-300 rounded-md bg-gray-50 hover:bg-gray-100 transition-colors"
-              title={t.selectCategory}
-            >
-            <Plus className={`w-4 h-4 text-blue-600 transition-transform duration-200 ${isOpen ? 'rotate-45' : ''}`} />
-          </button>
-        </div>
-        
-        {isOpen && (
-          <>
-            <div className="fixed inset-0 z-[55]" onClick={() => setIsOpen(false)} />
-            <div className={`absolute z-[60] mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-hidden flex flex-col ${isRtl ? 'right-0' : 'left-0'}`}>
-              <div className="p-2 border-b border-gray-100 bg-gray-50">
-                <input
-                  type="text"
-                  placeholder={t.search + "..."}
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                  autoFocus
-                />
-              </div>
-              <div className="overflow-y-auto py-1">
-                {filteredCategories.length > 0 ? (
-                  filteredCategories.map((cat: string, idx: number) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => {
-                        onChange(cat);
-                        setIsOpen(false);
-                      }}
-                      className={`w-full ${isRtl ? 'text-right' : 'text-left'} px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors`}
-                    >
-                      {cat}
-                    </button>
-                  ))
-                ) : (
-                  <div className="px-4 py-6 text-sm text-gray-500 text-center italic">
-                    {t.noCategoriesFound}
-                  </div>
-                )}
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-    );
-  };
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '-';
@@ -331,7 +356,9 @@ export default function Expenses() {
                       </td>
                     )}
                     <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-600">{formatDate(expense.date)}</td>
-                    <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm font-semibold text-gray-800">{expense.description}</td>
+                    <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm">
+                      <div className="font-semibold text-gray-800">{expense.description}</div>
+                    </td>
                     <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-red-600 font-bold tabular-nums text-right">{currency} {expense.amount.toLocaleString()}</td>
                     {canModify && (
                       <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-sm font-medium text-center">
@@ -385,14 +412,14 @@ export default function Expenses() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t.amount}</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t.totalAmount}</label>
                 <input
                   type="number"
                   required
                   min="0"
                   value={currentExpense.amount || ''}
                   onChange={(e) => setCurrentExpense({...currentExpense, amount: Number(e.target.value)})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 font-bold"
                 />
               </div>
 

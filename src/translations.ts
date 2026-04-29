@@ -95,6 +95,11 @@ export const translations = {
     description: 'Description',
     editExpense: 'Edit Expense',
     addExpense: 'Add New Expense',
+    totalAmount: 'Total Amount',
+    items: 'Items',
+    itemAmount: 'Item Amount',
+    addAnotherItem: 'Add Another Item',
+    removeItem: 'Remove Item',
 
     // Reports
     reportSettings: 'Report Settings',
@@ -532,6 +537,11 @@ export const translations = {
     description: 'تفصیل',
     editExpense: 'خرچے میں ترمیم',
     addExpense: 'نیا خرچہ شامل کریں',
+    totalAmount: 'کل رقم',
+    items: 'آئٹمز',
+    itemAmount: 'آئٹم کی رقم',
+    addAnotherItem: 'مزید آئٹم شامل کریں',
+    removeItem: 'آئٹم ختم کریں',
 
     // Reports
     reportSettings: 'رپورٹ سیٹنگز',

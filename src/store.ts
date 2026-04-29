@@ -60,12 +60,19 @@ export interface Donation {
   history: { timestamp: string; action: string; details: string; }[];
 }
 
+export interface ExpenseItem {
+  id: string;
+  name: string;
+  amount: number;
+}
+
 export interface Expense {
   id: string;
   description: string;
   amount: number;
   date: string;
   category?: string;
+  items?: ExpenseItem[];
 }
 
 export interface AppSettings {
